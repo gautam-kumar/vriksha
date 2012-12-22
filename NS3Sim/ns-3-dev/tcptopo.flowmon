@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<FlowMonitor>
+  <FlowStats>
+    <Flow flowId="1" timeFirstTxPacket="+1000000000.0ns" timeFirstRxPacket="+1000120654.0ns" timeLastTxPacket="+2710793338.0ns" timeLastRxPacket="+2710914148.0ns" delaySum="+28938731038.0ns" jitterSum="+1530890470.0ns" lastDelay="+120810.0ns" txBytes="105416370" rxBytes="105416370" txPackets="75409" rxPackets="75409" lostPackets="0" timesForwarded="75409">
+    </Flow>
+    <Flow flowId="2" timeFirstTxPacket="+1000000000.0ns" timeFirstRxPacket="+1000120982.0ns" timeLastTxPacket="+2701744895.0ns" timeLastRxPacket="+2702302741.0ns" delaySum="+28913290311.0ns" jitterSum="+1530518576.0ns" lastDelay="+557846.0ns" txBytes="105416320" rxBytes="105416320" txPackets="75408" rxPackets="75408" lostPackets="0" timesForwarded="75408">
+    </Flow>
+    <Flow flowId="3" timeFirstTxPacket="+1000120654.0ns" timeFirstRxPacket="+1000241308.0ns" timeLastTxPacket="+2710914148.0ns" timeLastRxPacket="+2711034802.0ns" delaySum="+4581714996.0ns" jitterSum="+0.0ns" lastDelay="+120654.0ns" txBytes="1518960" rxBytes="1518960" txPackets="37974" rxPackets="37974" lostPackets="0" timesForwarded="37974">
+    </Flow>
+    <Flow flowId="4" timeFirstTxPacket="+1000120982.0ns" timeFirstRxPacket="+1000241636.0ns" timeLastTxPacket="+2702302741.0ns" timeLastRxPacket="+2702423395.0ns" delaySum="+4582076958.0ns" jitterSum="+0.0ns" lastDelay="+120654.0ns" txBytes="1519080" rxBytes="1519080" txPackets="37977" rxPackets="37977" lostPackets="0" timesForwarded="37977">
+    </Flow>
+  </FlowStats>
+  <Ipv4FlowClassifier>
+    <Flow flowId="1" sourceAddress="10.1.0.1" destinationAddress="10.1.2.2" protocol="6" sourcePort="49153" destinationPort="8080" />
+    <Flow flowId="2" sourceAddress="10.1.1.1" destinationAddress="10.1.2.2" protocol="6" sourcePort="49153" destinationPort="8081" />
+    <Flow flowId="3" sourceAddress="10.1.2.2" destinationAddress="10.1.0.1" protocol="6" sourcePort="8080" destinationPort="49153" />
+    <Flow flowId="4" sourceAddress="10.1.2.2" destinationAddress="10.1.1.1" protocol="6" sourcePort="8081" destinationPort="49153" />
+  </Ipv4FlowClassifier>
+</FlowMonitor>
