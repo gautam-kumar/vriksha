@@ -133,7 +133,7 @@ def build(bld):
         'model/ipv6-option-demux.cc',
         'model/icmpv6-l4-protocol.cc',
         'model/tcp-socket-base.cc',
-        'model/tcp-rfc793.cc',
+        #'model/tcp-rfc793.cc',
         'model/tcp-tahoe.cc',
         'model/tcp-reno.cc',
         'model/tcp-newreno.cc',
