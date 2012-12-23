@@ -36,6 +36,28 @@ public:
 protected:
   virtual uint32_t Window (void); // Return the max possible number of unacked bytes
   virtual Ptr<TcpSocketBase> Fork (void); // Call CopyObject<TcpNewReno> to clone me
+  
+  virtual void ConnectionSucceeded (void); // Schedule-friendly wrapper for Socket::NotifyConnectionSucceeded()
+  
+  
+  // Functions that need to be modified due to Ecn prototype
+  virtual void DoForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port, 
+    Ptr<Ipv4Interface> incomingInterface);
+  virtual void SendEmptyPacket (uint8_t flags); // Send a empty packet that carries a flag, e.g. ACK
+  virtual void PeerClose (Ptr<Packet>, const TcpHeader&); // Received a FIN from peer, notify rx buffer
+  
+  
+  virtual void ProcessSynSent (Ptr<Packet> packet, const TcpHeader& tcpHeader);
+  virtual void ProcessSynRcvd (Ptr<Packet> packet, const TcpHeader& tcpHeader, 
+    const Address& fromAddress, const Address& toAddress);
+  virtual void ProcessWait (Ptr<Packet>, const TcpHeader&); // Received a packet upon CLOSE_WAIT, FIN_WAIT_1, FIN_WAIT_2
+   
+  virtual void ProcessEstablished (Ptr<Packet> packet, const TcpHeader& tcpHeader, bool isEcnMarked);
+  virtual void ProcessLastAck (Ptr<Packet>, const TcpHeader&); // Received a packet upon LAST_ACK
+  virtual void ReceivedData (Ptr<Packet> p, const TcpHeader& tcpHeader, bool isEcnMarked);
+  virtual void ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader, bool isEcnMarked);
+  virtual void DelAckTimeout (void);  // Action upon delay ACK timeout, i.e. send an ACK
+  // Functions that TcpNewReno also overrides
   virtual void NewAck (SequenceNumber32 const& seqNum, bool hasEce, uint32_t packetSize); // DcTcp New ACK Handling, Inc cWnd and call NewAck() of parent
   virtual void DupAck (const TcpHeader& t, uint32_t count);  // Halving cwnd and reset nextTxSequence
   virtual void Retransmit (void); // Exit fast recovery upon retransmit timeout
@@ -64,6 +86,8 @@ protected:
 	double								 m_dcTcpG;
 	SequenceNumber32			 m_dcTcpTxWindow;
 	uint32_t						 	 m_dcTcpSeqRecorded;
+	
+	bool              m_ceLastPacket;     //< CE tag on the last packet seen
 };
 
 } // namespace ns3

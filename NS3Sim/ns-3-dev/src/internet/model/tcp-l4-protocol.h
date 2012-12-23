@@ -139,7 +139,7 @@ private:
   Ipv6EndPointDemux *m_endPoints6;
   TypeId m_rttTypeId;
   TypeId m_socketTypeId;
-private:
+public:
   friend class TcpSocketBase;
   void SendPacket (Ptr<Packet>, const TcpHeader &,
                    Ipv4Address, Ipv4Address, Ptr<NetDevice> oif = 0);

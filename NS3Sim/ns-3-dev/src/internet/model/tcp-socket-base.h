@@ -128,7 +128,8 @@ protected:
   // Helper functions: Connection set up
   int SetupCallback (void);        // Common part of the two Bind(), i.e. set callback and remembering local addr:port
   int DoConnect (void);            // Sending a SYN packet to make a connection if the state allows
-  void ConnectionSucceeded (void); // Schedule-friendly wrapper for Socket::NotifyConnectionSucceeded()
+  
+  virtual void ConnectionSucceeded (void); // Schedule-friendly wrapper for Socket::NotifyConnectionSucceeded()
   int SetupEndpoint (void);        // Configure m_endpoint for local addr for given remote addr
   int SetupEndpoint6 (void);       // Configure m_endpoint6 for local addr for given remote addr
   void CompleteFork (Ptr<Packet>, const TcpHeader&, const Address& fromAddress, const Address& toAdress);
@@ -140,7 +141,7 @@ protected:
   virtual void DoForwardUp (Ptr<Packet> packet, Ipv6Address saddr, Ipv6Address daddr, uint16_t port); // Ipv6 version
   bool SendPendingData (bool withAck = false); // Send as much as the window allows
   uint32_t SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool withAck); // Send a data packet
-  void SendEmptyPacket (uint8_t flags); // Send a empty packet that carries a flag, e.g. ACK
+  virtual void SendEmptyPacket (uint8_t flags); // Send a empty packet that carries a flag, e.g. ACK
   void SendRST (void); // Send reset and tear down this socket
   bool OutOfRange (SequenceNumber32 head, SequenceNumber32 tail) const; // Check if a sequence number range is within the rx window
 
@@ -150,19 +151,19 @@ protected:
   void Destroy (void); // Kill this socket by zeroing its attributes
   void Destroy6 (void); // Kill this socket by zeroing its attributes
   void DeallocateEndPoint (void); // Deallocate m_endPoint
-  void PeerClose (Ptr<Packet>, const TcpHeader&); // Received a FIN from peer, notify rx buffer
+  virtual void PeerClose (Ptr<Packet>, const TcpHeader&); // Received a FIN from peer, notify rx buffer
   void DoPeerClose (void); // FIN is in sequence, notify app and respond with a FIN
   void CancelAllTimers (void); // Cancel all timer when endpoint is deleted
   void TimeWait (void);  // Move from CLOSING or FIN_WAIT_2 to TIME_WAIT state
 
   // State transition functions
-  void ProcessEstablished (Ptr<Packet>, const TcpHeader&, bool isEcnMarked); // Received a packet upon ESTABLISHED state
+  virtual void ProcessEstablished (Ptr<Packet>, const TcpHeader&, bool isEcnMarked); // Received a packet upon ESTABLISHED state
   void ProcessListen (Ptr<Packet>, const TcpHeader&, const Address&, const Address&); // Process the newly received ACK
-  void ProcessSynSent (Ptr<Packet>, const TcpHeader&); // Received a packet upon SYN_SENT
-  void ProcessSynRcvd (Ptr<Packet>, const TcpHeader&, const Address&, const Address&); // Received a packet upon SYN_RCVD
-  void ProcessWait (Ptr<Packet>, const TcpHeader&); // Received a packet upon CLOSE_WAIT, FIN_WAIT_1, FIN_WAIT_2
+  virtual void ProcessSynSent (Ptr<Packet>, const TcpHeader&); // Received a packet upon SYN_SENT
+  virtual void ProcessSynRcvd (Ptr<Packet>, const TcpHeader&, const Address&, const Address&); // Received a packet upon SYN_RCVD
+  virtual void ProcessWait (Ptr<Packet>, const TcpHeader&); // Received a packet upon CLOSE_WAIT, FIN_WAIT_1, FIN_WAIT_2
   void ProcessClosing (Ptr<Packet>, const TcpHeader&); // Received a packet upon CLOSING
-  void ProcessLastAck (Ptr<Packet>, const TcpHeader&); // Received a packet upon LAST_ACK
+  virtual void ProcessLastAck (Ptr<Packet>, const TcpHeader&); // Received a packet upon LAST_ACK
 
   // Window management
   virtual uint32_t UnAckDataCount (void);       // Return count of number of unacked bytes
@@ -205,7 +206,8 @@ protected:
   Time              m_delAckTimeout;   //< Time to delay an ACK
   Time              m_persistTimeout;  //< Time between sending 1-byte probes
   Time              m_cnTimeout;       //< Timeout for connection retry
-  bool              m_ceLastPacket;     //< CE tag on the last packet seen
+ 
+  
   // Connections to other layers of TCP/IP
   Ipv4EndPoint*       m_endPoint;
   Ipv6EndPoint*       m_endPoint6;
@@ -235,6 +237,9 @@ protected:
   uint32_t              m_segmentSize; //< Segment size
   uint16_t              m_maxWinSize;  //< Maximum window size to advertise
   TracedValue<uint32_t> m_rWnd;        //< Flow control window at remote side
+  
+  
+  bool m_ceLastPacket;
 };
 
 } // namespace ns3

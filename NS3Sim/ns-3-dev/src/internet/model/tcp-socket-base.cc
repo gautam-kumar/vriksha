@@ -100,7 +100,6 @@ TcpSocketBase::GetTypeId (void)
 TcpSocketBase::TcpSocketBase (void)
   : m_dupAckCount (0),
     m_delAckCount (0),
-    m_ceLastPacket (false),
     m_endPoint (0),
     m_endPoint6 (0),
     m_node (0),
@@ -120,7 +119,8 @@ TcpSocketBase::TcpSocketBase (void)
     m_connected (false),
     m_segmentSize (0),
     // For attribute initialization consistency (quiet valgrind)
-    m_rWnd (0xffffffff)
+    m_rWnd (0xffffffff),
+    m_ceLastPacket(false)
 {
   NS_LOG_FUNCTION (this);
 }
@@ -155,7 +155,8 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     m_msl (sock.m_msl),
     m_segmentSize (sock.m_segmentSize),
     m_maxWinSize (sock.m_maxWinSize),
-    m_rWnd (sock.m_rWnd)
+    m_rWnd (sock.m_rWnd),
+    m_ceLastPacket(false)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_LOGIC ("Invoked the copy constructor");

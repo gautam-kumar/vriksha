@@ -138,6 +138,7 @@ def build(bld):
         'model/tcp-reno.cc',
         'model/tcp-newreno.cc',
         'model/tcp-rx-buffer.cc',
+        #'model/tcp-d2.cc',
         'model/tcp-tx-buffer.cc',
         'model/ipv4-packet-info-tag.cc',
         'model/ipv6-packet-info-tag.cc',
