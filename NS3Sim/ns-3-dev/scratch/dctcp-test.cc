@@ -377,7 +377,14 @@ int main (int argc, char *argv[])
   LogComponentEnable("D2Tcp", LOG_LEVEL_DEBUG);
   Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::DcTcp"));
   Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1400 - 42)); // <G> 42 = Header Size IP 
-   
+  
+  PointToPointHelper pointToPoint;
+  //pointToPoint.SetQueue("ns3::DropTailQueueNotifier", "MaxBytes", UintegerValue(700000));
+  pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000), "EcnThreshold", DoubleValue(0.05));
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("1024Mbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue (".050ms"));
+  pointToPoint.SetDeviceAttribute("Mtu", UintegerValue(1500));
+
   NodeContainer nodes;
   nodes.Create(4);
   
@@ -392,13 +399,6 @@ int main (int argc, char *argv[])
 
   p2p[2].Add(nodes.Get(2));
   p2p[2].Add(nodes.Get(3));
-
-  PointToPointHelper pointToPoint;
-  //pointToPoint.SetQueue("ns3::DropTailQueueNotifier", "MaxBytes", UintegerValue(700000));
-  pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000), "EcnThreshold", DoubleValue(0.05));
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("1024Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue (".050ms"));
-  pointToPoint.SetDeviceAttribute("Mtu", UintegerValue(1500));
 
   NetDeviceContainer devices[3];
   for(i = 0;i < 3; i++) {
@@ -427,7 +427,8 @@ int main (int argc, char *argv[])
 
   ofstream recvfile1("recv1.txt", ios::app);
   ofstream recvfile2("recv2.txt", ios::app);
-  
+ 
+
   Address sinkAddress0(InetSocketAddress(interfaces[2].GetAddress(1), 8080));
   Ptr<Sender> sendapp = CreateObject<Sender>();
   Ptr<Socket> sock = Socket::CreateSocket(nodes.Get(0), TcpSocketFactory::GetTypeId());
