@@ -43,6 +43,7 @@ Socket::GetTypeId (void)
 
 Socket::Socket (void)
 {
+  m_deadline = 0;
   m_boundnetdevice = 0;
   m_recvPktInfo = false;
   NS_LOG_FUNCTION_NOARGS ();
@@ -64,6 +65,17 @@ Socket::CreateSocket (Ptr<Node> node, TypeId tid)
   NS_ASSERT (s != 0);
   return s;
 }
+
+void
+Socket::SetDeadline(uint32_t value) {
+    m_deadline = value;
+}
+
+uint32_t
+Socket::GetDeadline() {
+    return m_deadline;
+}
+
 
 void 
 Socket::SetConnectCallback (

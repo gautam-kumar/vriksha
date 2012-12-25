@@ -351,6 +351,7 @@ QueueOccupancyChange(uint32_t oldQOcc, uint32_t newQOcc)
 }
 
 
+/*
 static void
 CwndChange (std::string context, uint32_t oldCwnd, uint32_t newCwnd)
 {
@@ -362,20 +363,18 @@ SSThreshChange (std::string context, uint32_t oldSSThresh, uint32_t newSSThresh)
 {
   NS_LOG_UNCOND(context << "SSThresh: " << Simulator::Now().GetSeconds() << "\t" << newSSThresh);
 }
+*/
 
 int main (int argc, char *argv[])
 {
   int i;
   char addr[20];
   uint32_t bytes = 102400000;
-  
-  CommandLine cmd;
-  cmd.AddValue("nBytes", "Number of bytes to be sent", bytes);
-  cmd.Parse (argc, argv);
 
-  LogComponentEnable("TcpSocketBase", LOG_LEVEL_INFO);
-  LogComponentEnable("TcpNewReno", LOG_LEVEL_INFO);
-  LogComponentEnable("DcTcp", LOG_LEVEL_INFO);
+  LogComponentEnable("TcpSocketBase", LOG_LEVEL_WARN);
+  LogComponentEnable("TcpNewReno", LOG_LEVEL_WARN);
+  LogComponentEnable("DcTcp", LOG_LEVEL_WARN);
+  LogComponentEnable("D2Tcp", LOG_LEVEL_DEBUG);
   Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::DcTcp"));
   Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1400 - 42)); // <G> 42 = Header Size IP 
    
@@ -398,7 +397,7 @@ int main (int argc, char *argv[])
   //pointToPoint.SetQueue("ns3::DropTailQueueNotifier", "MaxBytes", UintegerValue(700000));
   pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000), "EcnThreshold", DoubleValue(0.05));
   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("1024Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue (".060ms"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue (".050ms"));
   pointToPoint.SetDeviceAttribute("Mtu", UintegerValue(1500));
 
   NetDeviceContainer devices[3];
@@ -432,8 +431,10 @@ int main (int argc, char *argv[])
   Address sinkAddress0(InetSocketAddress(interfaces[2].GetAddress(1), 8080));
   Ptr<Sender> sendapp = CreateObject<Sender>();
   Ptr<Socket> sock = Socket::CreateSocket(nodes.Get(0), TcpSocketFactory::GetTypeId());
-  sock->TraceConnect("CongestionWindow", "Socket0: ", MakeCallback(&CwndChange));
-  sock->TraceConnect("SSThresh", "Socket0: ", MakeCallback(&SSThreshChange));
+  sock->SetDeadline(1500);
+  //sock->TraceConnect("CongestionWindow", "Socket0: ", MakeCallback(&CwndChange));
+  //sock->TraceConnect("SSThresh", "Socket0: ", MakeCallback(&SSThreshChange));
+  //uint32_t bytes = 102400000;
   sendapp->Setup(sock, sinkAddress0, bytes);
   nodes.Get(0)->AddApplication(sendapp);
   sendapp->SetStartTime(Seconds(1.));
@@ -448,6 +449,7 @@ int main (int argc, char *argv[])
   Address sinkAddress1(InetSocketAddress(interfaces[2].GetAddress(1), 8081));
   Ptr<Sender> sendapp1 = CreateObject<Sender>();
   Ptr<Socket> sock1 = Socket::CreateSocket(nodes.Get(1), TcpSocketFactory::GetTypeId());
+  sock1->SetDeadline(10000);
   //sock1->TraceConnect("CongestionWindow", "Socket1: ", MakeCallback(&CwndChange));
   sendapp1->Setup(sock1, sinkAddress1, bytes);
   nodes.Get(1)->AddApplication(sendapp1);

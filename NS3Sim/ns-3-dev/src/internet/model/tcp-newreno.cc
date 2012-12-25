@@ -117,7 +117,7 @@ TcpNewReno::Fork (void)
 
 /** New ACK (up to seqnum seq) received. Increase cwnd and call TcpSocketBase::NewAck() */
 void
-TcpNewReno::NewAck (const SequenceNumber32& seq, bool hasEce, uint32_t packetSize)
+TcpNewReno::NewAck (const SequenceNumber32& seq)
 {
   NS_LOG_FUNCTION (this << seq);
   NS_LOG_LOGIC ("TcpNewReno receieved ACK for seq " << seq <<
@@ -134,7 +134,7 @@ TcpNewReno::NewAck (const SequenceNumber32& seq, bool hasEce, uint32_t packetSiz
       }
       m_cWnd += m_segmentSize;  // increase cwnd
       NS_LOG_INFO ("Partial ACK in fast recovery: cwnd set to " << m_cWnd);
-      TcpSocketBase::NewAck (seq, hasEce, packetSize); // update m_nextTxSequence and send new data if allowed by window
+      TcpSocketBase::NewAck (seq); // update m_nextTxSequence and send new data if allowed by window
       DoRetransmit (); // Assume the next seq is lost. Retransmit lost packet
       return;
     }
@@ -162,7 +162,7 @@ TcpNewReno::NewAck (const SequenceNumber32& seq, bool hasEce, uint32_t packetSiz
     }
 
   // Complete newAck processing
-  TcpSocketBase::NewAck (seq, hasEce, packetSize);
+  TcpSocketBase::NewAck (seq);
 }
 
 /** Cut cwnd and enter fast recovery mode upon triple dupack */

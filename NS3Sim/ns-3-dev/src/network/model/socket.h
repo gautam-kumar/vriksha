@@ -104,6 +104,11 @@ public:
    * \param tid The TypeId of a SocketFactory class to use
    */
   static Ptr<Socket> CreateSocket (Ptr<Node> node, TypeId tid);
+
+  void SetDeadline(uint32_t value);
+
+  uint32_t GetDeadline();
+
   /**
    * \return the errno associated to the last call which failed in this
    *         socket. Each socket's errno is initialized to zero
@@ -624,6 +629,7 @@ protected:
   virtual void DoDispose (void);
   Ptr<NetDevice> m_boundnetdevice;
   bool m_recvPktInfo;
+
 private:
   Callback<void, Ptr<Socket> >                   m_connectionSucceeded;
   Callback<void, Ptr<Socket> >                   m_connectionFailed;
@@ -635,6 +641,7 @@ private:
   Callback<void, Ptr<Socket>, uint32_t >         m_sendCb;
   Callback<void, Ptr<Socket> >                   m_receivedData;
 
+  uint32_t m_deadline; // This is in ms
 };
 
 /**

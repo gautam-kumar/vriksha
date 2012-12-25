@@ -855,7 +855,7 @@ DcTcp::NewAck(const SequenceNumber32& seq, bool hasEce, uint32_t packetSize)
       m_cWnd -= seq - m_txBuffer.HeadSequence ();
       m_cWnd += m_segmentSize;  // increase cwnd
       NS_LOG_INFO ("Partial ACK in fast recovery: cwnd set to " << m_cWnd);
-      TcpSocketBase::NewAck (seq, hasEce, packetSize); // update m_nextTxSequence and send new data if allowed by window
+      TcpSocketBase::NewAck (seq); // update m_nextTxSequence and send new data if allowed by window
       DoRetransmit (); // Assume the next seq is lost. Retransmit lost packet
       return;
     }
@@ -883,7 +883,7 @@ DcTcp::NewAck(const SequenceNumber32& seq, bool hasEce, uint32_t packetSize)
     }
 
   // Complete newAck processing
-  TcpSocketBase::NewAck (seq, hasEce, packetSize);
+  TcpSocketBase::NewAck (seq);
 }
 
 /** Cut cwnd and enter fast recovery mode upon triple dupack */
