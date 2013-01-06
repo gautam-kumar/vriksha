@@ -111,7 +111,6 @@ EcnQueue::DoDequeue (void)
   m_bytesInQueue -= p->GetSize ();
 
   NS_LOG_LOGIC ("Popped " << p);
-	//std::cout << "Dequeued: "; p->Print(std::cout); std::cout << std::endl;
   NS_LOG_LOGIC ("Number packets " << m_packets.size ());
   NS_LOG_LOGIC ("Number bytes " << m_bytesInQueue);
 

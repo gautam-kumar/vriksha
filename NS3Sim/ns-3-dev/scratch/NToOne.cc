@@ -313,7 +313,9 @@ void TcpReceiver::HandleRead (Ptr<Socket> socket)
         if(m_totalRx >= m_packetSize)
         {
             std::cout<<"\nReceived all data ("<<m_totalRx<<") at:"<<Simulator::Now().GetSeconds()<<" from "<<InetSocketAddress::ConvertFrom(from).GetIpv4 ()<<"\n";
-            (*m_ofs)<<Simulator::Now().GetSeconds() - 1.0<<"\n";
+            if (m_ofs != NULL) {
+              (*m_ofs)<<Simulator::Now().GetSeconds() - 1.0<<"\n";
+            }
         }
         
         if(m_totalRx > m_packetSize)
@@ -340,6 +342,8 @@ void TcpReceiver::HandleAccept (Ptr<Socket> s, const Address& from)
 {
     NS_LOG_FUNCTION (this << s << from);
     s->SetRecvCallback (MakeCallback (&TcpReceiver::HandleRead, this));
+    //Ptr<TcpSocket> ts = s->GetObject<TcpSocket>();
+    //ts->SetDelAckMaxCount(3);
     m_socketList.push_back (s);
 }
 
@@ -347,7 +351,10 @@ void TcpReceiver::HandleAccept (Ptr<Socket> s, const Address& from)
 static void
 QueueOccupancyChange(uint32_t oldQOcc, uint32_t newQOcc) 
 {
-  NS_LOG_UNCOND("QueueChange: " << Simulator::Now().GetSeconds() << "\t" << newQOcc);
+//  double time = Simulator::Now().GetSeconds();
+//  if (time >= 0.5 && time <= 0.9) {
+    NS_LOG_UNCOND("QueueChange: " << Simulator::Now().GetSeconds() << "\t" << newQOcc);
+//  } 
 }
 
 
@@ -361,15 +368,13 @@ CwndChange (std::string context, uint32_t oldCwnd, uint32_t newCwnd)
 static void
 SSThreshChange (std::string context, uint32_t oldSSThresh, uint32_t newSSThresh) 
 {
-  NS_LOG_UNCOND(context << "SSThresh: " << Simulator::Now().GetSeconds() << "\t" << newSSThresh);
+    NS_LOG_UNCOND(context << "SSThresh: " << Simulator::Now().GetSeconds() << "\t" << newSSThresh);
 }
 */
 
 int main (int argc, char *argv[])
 {
-  int i;
   char addr[20];
-  uint32_t bytes = 102400000;
 
   LogComponentEnable("TcpSocketBase", LOG_LEVEL_WARN);
   LogComponentEnable("TcpNewReno", LOG_LEVEL_WARN);
@@ -379,91 +384,80 @@ int main (int argc, char *argv[])
   Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1400 - 42)); // <G> 42 = Header Size IP 
   
   PointToPointHelper pointToPoint;
-  //pointToPoint.SetQueue("ns3::DropTailQueueNotifier", "MaxBytes", UintegerValue(700000));
-  pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000), "EcnThreshold", DoubleValue(0.05));
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("1024Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue (".050ms"));
+  pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000), "EcnThreshold", DoubleValue(0.025));
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Gbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue (".020ms"));
   pointToPoint.SetDeviceAttribute("Mtu", UintegerValue(1500));
 
-  NodeContainer nodes;
-  nodes.Create(4);
-  
   //building topology
-  NodeContainer p2p[3];
+  int n = 2;
+  int numNodes = n + 2;
+  NodeContainer nodes;
+  nodes.Create(numNodes);
 
-  p2p[0].Add(nodes.Get(0));
-  p2p[0].Add(nodes.Get(2));
+  int numLinks = n + 1;
+  NodeContainer p2p[numLinks];
+  int i = 0;
+  for (i = 0; i < numLinks - 1; i++) {
+    p2p[i].Add(nodes.Get(i));
+    p2p[i].Add(nodes.Get(numNodes - 2));
+  }
+  p2p[numLinks - 1].Add(nodes.Get(numNodes - 2));
+  p2p[numLinks - 1].Add(nodes.Get(numNodes - 1));
 
-  p2p[1].Add(nodes.Get(1));
-  p2p[1].Add(nodes.Get(2));
-
-  p2p[2].Add(nodes.Get(2));
-  p2p[2].Add(nodes.Get(3));
-
-  NetDeviceContainer devices[3];
-  for(i = 0;i < 3; i++) {
-    devices[i] = pointToPoint.Install (p2p[i]);
+  NetDeviceContainer devices[numLinks];
+  for (i = 0; i < numLinks; i++) {
+    devices[i] = pointToPoint.Install(p2p[i]);
   }
   Ptr<PointToPointNetDevice> interestedNetDevice;
-  interestedNetDevice = StaticCast<PointToPointNetDevice>(devices[2].Get(0));
+  interestedNetDevice = StaticCast<PointToPointNetDevice>(devices[numLinks - 1].Get(0));
   interestedNetDevice->GetQueue()->TraceConnectWithoutContext("QueueOccupancy", MakeCallback(&QueueOccupancyChange));
   
   InternetStackHelper stack;
   stack.Install(nodes);
-
-  Ipv4AddressHelper address[3];
-  for(i = 0; i < 3; i++)
+  Ipv4AddressHelper address[numLinks];
+  for (i = 0; i < numLinks; i++)
   {
     sprintf(addr, "10.1.%d.0", i);
     address[i].SetBase(addr, "255.255.255.0");
   }
-
-  Ipv4InterfaceContainer interfaces[3];
-  for(i = 0; i < 3; i++) {
+  
+  NS_LOG_UNCOND("Addresses Set up.");
+  Ipv4InterfaceContainer interfaces[numLinks];
+  for(i = 0; i < numLinks; i++) {
     interfaces[i] = address[i].Assign (devices[i]);
   }
 
   Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
-  ofstream recvfile1("recv1.txt", ios::app);
-  ofstream recvfile2("recv2.txt", ios::app);
- 
+  //Address sinkAddress[n];
+  int deadlines[] = {1200, 1700, 3000, 5000};
+  int bytes[] = {100000000, 100000000, 350000000, 500000000};
+  Ptr<Sender> sendApp[n];
+  Ptr<Socket> sock[n];
+  Ptr<TcpReceiver> recvApp[n];
+  for (i = 0; i < n; i++) {
+    Address sinkAddress(InetSocketAddress(interfaces[numLinks - 1].GetAddress(1), 8080 + i));
+    sendApp[i] = CreateObject<Sender>();
+    sock[i] = Socket::CreateSocket(nodes.Get(i), TcpSocketFactory::GetTypeId());
+    sock[i]->SetDeadline(deadlines[i]);
+    //Ptr<TcpSocket> ts = sock[i]->GetObject<TcpSocket>();
+    //ts->SetDelAckMaxCount(3);
+    //uint32_t bytes = 102400000;
+    sendApp[i]->Setup(sock[i], sinkAddress, bytes[i]);
+    nodes.Get(i)->AddApplication(sendApp[i]);
+    sendApp[i]->SetStartTime(Seconds(1.));
+    sendApp[i]->SetStopTime(Seconds(10000.));
 
-  Address sinkAddress0(InetSocketAddress(interfaces[2].GetAddress(1), 8080));
-  Ptr<Sender> sendapp = CreateObject<Sender>();
-  Ptr<Socket> sock = Socket::CreateSocket(nodes.Get(0), TcpSocketFactory::GetTypeId());
-  sock->SetDeadline(1500);
-  //sock->TraceConnect("CongestionWindow", "Socket0: ", MakeCallback(&CwndChange));
-  //sock->TraceConnect("SSThresh", "Socket0: ", MakeCallback(&SSThreshChange));
-  //uint32_t bytes = 102400000;
-  sendapp->Setup(sock, sinkAddress0, bytes);
-  nodes.Get(0)->AddApplication(sendapp);
-  sendapp->SetStartTime(Seconds(1.));
-  sendapp->SetStopTime(Seconds(10000.));
-
-  Ptr<TcpReceiver> recvapp = CreateObject<TcpReceiver>();
-  recvapp->Setup(sinkAddress0, bytes, &recvfile1);
-  nodes.Get(3)->AddApplication(recvapp);
-  recvapp->SetStartTime(Seconds(0.));
-  recvapp->SetStopTime(Seconds(10000.));
-
-  Address sinkAddress1(InetSocketAddress(interfaces[2].GetAddress(1), 8081));
-  Ptr<Sender> sendapp1 = CreateObject<Sender>();
-  Ptr<Socket> sock1 = Socket::CreateSocket(nodes.Get(1), TcpSocketFactory::GetTypeId());
-  sock1->SetDeadline(10000);
-  //sock1->TraceConnect("CongestionWindow", "Socket1: ", MakeCallback(&CwndChange));
-  sendapp1->Setup(sock1, sinkAddress1, bytes);
-  nodes.Get(1)->AddApplication(sendapp1);
-  sendapp1->SetStartTime(Seconds(1.));
-  sendapp1->SetStopTime(Seconds(10000.));
-
-  Ptr<TcpReceiver> recvapp1 = CreateObject<TcpReceiver>();
-  recvapp1->Setup(sinkAddress1, bytes, &recvfile2);
-  nodes.Get(3)->AddApplication(recvapp1);
-  recvapp1->SetStartTime(Seconds(0.));
-  recvapp1->SetStopTime(Seconds(10000.));
+    recvApp[i] = CreateObject<TcpReceiver>();
+    recvApp[i]->Setup(sinkAddress, bytes[i], NULL);
+    nodes.Get(numNodes - 1)->AddApplication(recvApp[i]);
+    recvApp[i]->SetStartTime(Seconds(0.));
+    recvApp[i]->SetStopTime(Seconds(10000.));
+  }
     
   // Flow Monitor
+  /*
   Ptr<FlowMonitor> flowmon;
   FlowMonitorHelper flowmonHelper;
   flowmon = flowmonHelper.InstallAll ();
@@ -471,9 +465,11 @@ int main (int argc, char *argv[])
   AsciiTraceHelper ascii;
   pointToPoint.EnableAsciiAll(ascii.CreateFileStream("tcptopo.tr"));
   pointToPoint.EnablePcapAll("tcptopo");
+  */
+  
   Simulator::Stop(Seconds(10000));
   Simulator::Run ();
-  flowmon->SerializeToXmlFile ("tcptopo.flowmon", false, false);
+  //flowmon->SerializeToXmlFile ("tcptopo.flowmon", false, false);
   Simulator::Destroy ();
   return 0;
 }

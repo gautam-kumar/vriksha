@@ -289,7 +289,8 @@ Time RttMeanDeviation::RetransmitTimeout ()
   temp = temp * m_multiplier; // Apply backoff
   Time retval = Time::FromInteger (temp, Time::MS);
   NS_LOG_DEBUG ("RetransmitTimeout:  return " << retval.GetSeconds ());
-  return (retval);  
+  //return (retval);
+  return Time::FromInteger(20, Time::MS);
 }
 
 Ptr<RttEstimator> RttMeanDeviation::Copy () const

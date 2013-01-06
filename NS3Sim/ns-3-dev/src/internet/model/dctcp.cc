@@ -74,6 +74,7 @@ DcTcp::DcTcp (void)
 		m_dcTcpG (1.0 / 16.0),
 		m_dcTcpTxWindow (0),
 		m_dcTcpSeqRecorded (0),
+		m_firstAckOnEstablished (true),
     m_ceLastPacket (false)
 {
   NS_LOG_FUNCTION (this);
@@ -94,6 +95,7 @@ DcTcp::DcTcp (const DcTcp& sock)
   	m_dcTcpG (1.0 / 16.0),
   	m_dcTcpTxWindow (0),
   	m_dcTcpSeqRecorded (0),
+  	m_firstAckOnEstablished (true),
     m_ceLastPacket (false)
 {
   NS_LOG_FUNCTION (this);
@@ -191,7 +193,7 @@ DcTcp::DoForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port,
       // Acknowledgement should be sent for all unacceptable packets (RFC793, p.69)
       if (m_state == ESTABLISHED && !(tcpHeader.GetFlags () & TcpHeader::RST))
         {
-          SendEmptyPacket (TcpHeader::ACK);
+          SendEmptyPacket (TcpHeader::ACK | (m_ceLastPacket ? TcpHeader::ECE : 0));
         }
       return;
     }
@@ -203,7 +205,7 @@ DcTcp::DoForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port,
     {
     case ESTABLISHED:
       if (isEcnMarked) {
-        NS_LOG_DEBUG("Received ECN marked packet" << packet);
+        NS_LOG_INFO("Received ECN marked packet" << packet);
       }
       // Changed, also passes in the ECN information #Gautam 
       ProcessEstablished (packet, tcpHeader, isEcnMarked);
@@ -483,6 +485,11 @@ DcTcp::ProcessEstablished (Ptr<Packet> packet, const TcpHeader& tcpHeader, bool 
   // Extract the flags. PSH and URG are not honoured.
   uint8_t tcpflags = tcpHeader.GetFlags () & ~(TcpHeader::PSH | TcpHeader::URG);
 
+  if ((tcpflags & TcpHeader::ACK) != 0 && m_firstAckOnEstablished) {
+    m_firstAckOnEstablished = false;
+    Simulator::ScheduleNow(&DcTcp::SetAlpha,this);
+    NS_LOG_UNCOND("Called the initial SetAlpha");
+  }
   // Different flags are different events
   if (tcpflags == TcpHeader::ACK)
     {
@@ -811,6 +818,30 @@ DcTcp::DelAckTimeout (void)
 }
 
 
+// UNCONDSetAlpha only after RTTs
+void 
+DcTcp::SetAlpha() 
+{
+  m_dcTcpTxWindow = m_highTxMark;
+  // Update alpha
+  if (m_dcTcpBytesInterval == 0) {
+    m_dcTcpBytesInterval = 1;
+  }
+  m_dcTcpAlpha = (1 - m_dcTcpG) * m_dcTcpAlpha 
+        + (m_dcTcpG * m_dcTcpBytesIntervalWithEce) / m_dcTcpBytesInterval;
+  m_dcTcpBytesInterval = 0;
+  m_dcTcpBytesIntervalWithEce = 0;
+  if (m_rtt->GetCurrentEstimate() < MicroSeconds(10))
+  {
+    m_ecnMarkEvent = Simulator::Schedule(MicroSeconds(10), &DcTcp::SetAlpha, this);
+  }
+  else
+  {
+    m_ecnMarkEvent = Simulator::Schedule(m_rtt->GetCurrentEstimate(), &DcTcp::SetAlpha, this);
+    NS_LOG_UNCOND("Scheduling SetAlpha at " << m_rtt->GetCurrentEstimate() << 
+    " with present value " << m_dcTcpAlpha);
+  }
+}
 
 /** New ACK (up to seqnum seq) received. Increase cwnd and call TcpSocketBase::NewAck() */
 void
@@ -823,7 +854,7 @@ DcTcp::NewAck(const SequenceNumber32& seq, bool hasEce, uint32_t packetSize)
                 " cwnd " << m_cWnd <<
                 " ssthresh " << m_ssThresh);
 	// The DCTCP logic is only based on the ACKS without any data content
-	if (packetSize <= 0) { // There is no data in this ACK
+	//if (packetSize <= 0) { // There is no data in this ACK
 		uint32_t bytesInfo = seq.GetValue() - m_dcTcpSeqRecorded;
 		m_dcTcpSeqRecorded = seq.GetValue();
 		m_dcTcpBytesInterval += bytesInfo;
@@ -832,7 +863,8 @@ DcTcp::NewAck(const SequenceNumber32& seq, bool hasEce, uint32_t packetSize)
 		}
 		
 		// Process the change for a full window
-		if (seq >= m_dcTcpTxWindow) {
+		/*
+    if (seq >= m_dcTcpTxWindow) {
 			m_dcTcpTxWindow = m_highTxMark;
 			// Update alpha
 			m_dcTcpAlpha = (1 - m_dcTcpG) * m_dcTcpAlpha 
@@ -840,13 +872,14 @@ DcTcp::NewAck(const SequenceNumber32& seq, bool hasEce, uint32_t packetSize)
 			m_dcTcpBytesInterval = 0;
 			m_dcTcpBytesIntervalWithEce = 0;
 		}
+    */
 		
 		// Decrease the congestion window for a marked ACK
 		if (hasEce) {
-			NS_LOG_INFO("Decreasing Congestion Window with m_dcTcpAlpha" << m_dcTcpAlpha);
+			//NS_LOG_UNCOND("Decreasing Congestion Window with m_dcTcpAlpha For ECE" << m_dcTcpAlpha);
 			m_cWnd = m_cWnd * (1 - m_dcTcpAlpha / 2.0);
 		}
-	}
+	//}
 	
 	
   // Check for exit condition of fast recovery
@@ -898,7 +931,7 @@ DcTcp::DupAck (const TcpHeader& t, uint32_t count)
 			m_cWnd = m_cWnd * (1 - m_dcTcpAlpha / 2.0);
       m_recover = m_highTxMark;
       m_inFastRec = true;
-      NS_LOG_INFO ("Triple dupack. Enter fast recovery mode. Reset cwnd to " << m_cWnd <<
+      NS_LOG_UNCOND ("Triple dupack. Enter fast recovery mode. Reset cwnd to " << m_cWnd <<
                    ", ssthresh to " << m_ssThresh << " at fast recovery seqnum " << m_recover);
       DoRetransmit ();
     }
@@ -940,11 +973,6 @@ DcTcp::Retransmit (void)
   m_rtt->IncreaseMultiplier ();             // Double the next RTO
   DoRetransmit ();                          // Retransmit the packet
 }
-
-
-
-
-
 
 void
 DcTcp::SetSegSize (uint32_t size)

@@ -61,7 +61,7 @@ protected:
   virtual void NewAck (SequenceNumber32 const& seqNum, bool hasEce, uint32_t packetSize); // DcTcp New ACK Handling, Inc cWnd and call NewAck() of parent
   virtual void DupAck (const TcpHeader& t, uint32_t count);  // Halving cwnd and reset nextTxSequence
   virtual void Retransmit (void); // Exit fast recovery upon retransmit timeout
-
+  void SetAlpha ();               // Changes the Alpha value
   // Implementing ns3::TcpSocket -- Attribute get/set
   virtual void     SetSegSize (uint32_t size);
   virtual void     SetSSThresh (uint32_t threshold);
@@ -86,7 +86,8 @@ protected:
 	double								 m_dcTcpG;
 	SequenceNumber32			 m_dcTcpTxWindow;
 	uint32_t						 	 m_dcTcpSeqRecorded;
-	
+  EventId                m_ecnMarkEvent;
+  bool                   m_firstAckOnEstablished;
 	bool              m_ceLastPacket;     //< CE tag on the last packet seen
 };
 

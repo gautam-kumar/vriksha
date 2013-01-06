@@ -176,7 +176,7 @@ def build(bld):
         'model/candidate-queue.cc',
         'model/ipv4-global-routing.cc',
         'model/priority-queue.cc',
-		'model/dctcp.cc',
+		    'model/dctcp.cc',
         'model/ecn-queue.cc',
         'helper/ipv4-global-routing-helper.cc',
         'helper/internet-stack-helper.cc',
@@ -289,6 +289,7 @@ def build(bld):
         'helper/ipv6-interface-container.h',
         'helper/ipv6-routing-helper.h',
         'model/ipv6-address-generator.h',
+        'model/mymacros.h',
        ]
 
     if bld.env['NSC_ENABLED']:

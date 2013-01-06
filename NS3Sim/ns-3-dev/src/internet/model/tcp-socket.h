@@ -70,7 +70,7 @@ public:
   // Literal names of TCP states for use in log messages */
   static const char* const TcpStateName[LAST_STATE];
 
-private:
+//private:
   // Indirect the attribute setting and getting through private virtual methods
   virtual void SetSndBufSize (uint32_t size) = 0;
   virtual uint32_t GetSndBufSize (void) const = 0;
