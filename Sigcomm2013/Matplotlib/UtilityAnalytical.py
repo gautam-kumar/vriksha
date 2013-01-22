@@ -3,22 +3,37 @@ import plotter
 import os
 import sys
 import math
+import scipy.stats as stats
+sys.path.append("~/Work/Templates/Matplotlib")
+
 k = 40
-l1 = 1.0 / 45.0
+l1 = 1.0 / 100.0
 l2 = 1.0 / 100.0
-T = [0.1 * x for x in range(1501)]
-D = [150, 170, 190, 210, 230, 250]
+T = [0.1 * x for x in range(2001)]
+D = [200, 220, 240, 260, 280, 300]
+
+mean1 = 100.0; 
+mean2 = 100.0;
+sigma1 = 20.0;
+sigma2 = 20.0;
 
 X = []
-Y = []
+YExp = []
+YNormal = []
 
 for d in D:
-	Y.append([k * (1 - math.exp(-l1 * t)) * (1 - math.exp(-l2 * (d - t))) for t in T])
+	YNormal.append([k * stats.norm.cdf((t - mean1) / sigma1) * stats.norm.cdf((d - t - mean2) / sigma2) for t in T])
+	YExp.append([k * (1 - math.exp(-l1 * t)) * (1 - math.exp(-l2 * (d - t))) for t in T])
 	X.append(T)
+  
 
-print Y[0]
-print X[0]
+plotter.PlotN(X, YExp, Y="Expected Utility", X="Wait Time", labels=['200ms', '220ms', '240ms', '260ms', '280ms', '300ms'], outputFile="UtilityAnalyticalExp", xAxis=[0, 200], yAxis=[0, 40], ext="pdf")
 
-plotter.PlotN(X, Y, Y="Expected Utility", X="Wait Time", labels=['150ms', '170ms', '190ms', '210ms', '230ms', '250ms'], outputFile="UtilityAnalytical", xAxis=[0, 150], yAxis=[0, 30], ext="pdf")
+
+print YNormal[-1]
+plotter.PlotN(X, YNormal, Y="Expected Utility", X="Wait Time", labels=['200ms', '220ms', '240ms', '260ms', '280ms', '300ms'], outputFile="UtilityAnalyticalNormal", xAxis=[0, 200], yAxis=[0, 40], ext="pdf")
+
+
+
 
 
