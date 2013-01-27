@@ -14,19 +14,10 @@ namespace VrikshaSim
     {
         public static void Main(String[] args)
         {
-            //
-            //Test.main();
-            //6TextWriter f1;
-            //Console.SetOut(f1);
-            GlobalVariables.flowSizeMinBytes = 10000;
-            GlobalVariables.flowSizeMaxBytes = 50000;
-            GlobalVariables.requestGenerationIntervalSec = 0.010;
             //MainRequestDeadlines(args);
             //MeetingRequestDeadlinesExperiment(args, SchedulerType.TCP, 2000, null, null); ;
-            MeetingRequestDeadlinesExperiment(args, SchedulerType.TCP, 2000, null, null);
-            MeetingRequestDeadlinesExperiment(args, SchedulerType.EDFPreEmptive, 2000, null, null);
-            MeetingRequestDeadlinesExperiment(args, SchedulerType.VrikshaNonKilling, 2000, null, null);
-            MeetingRequestDeadlinesExperiment(args, SchedulerType.SJFPreEmptive, 2000, null, null);
+
+            WaitTimes.MultipleWaitTimes(args); 
             //Test.WaitTime(); ;
         }
 
@@ -80,9 +71,9 @@ namespace VrikshaSim
         static void MeetingRequestDeadlinesExperiment(string[] args, SchedulerType type, int seed, TextWriter logOut, TextWriter flowInformation)
         {
             GlobalVariables.init(seed);
-            
+
             // Initialize System Components
-            TLA tla = new TLA();
+            HLA tla = new HLA();
             FlowScheduler topScheduler;
             switch (type)
             {
@@ -110,28 +101,30 @@ namespace VrikshaSim
             }
 
             List<MLA> mlas = new List<MLA>();
-            for (int i = 0; i < GlobalVariables.NumMlaPerTla; i++) {
+            for (int i = 0; i < GlobalVariables.NumMlaPerTla; i++)
+            {
                 mlas.Add(new MLA(GlobalVariables.NumQueuesInMla, topScheduler));
             }
 
             List<FlowScheduler> midSchedulers = new List<FlowScheduler>();
-            for (int i = 0; i < GlobalVariables.NumMlaPerTla; i++) {
+            for (int i = 0; i < GlobalVariables.NumMlaPerTla; i++)
+            {
                 switch (type)
                 {
                     case SchedulerType.TCP:
-                        midSchedulers.Add(new TCPFairScheduler(GlobalVariables.capacityBps,  mlas[i]));
+                        midSchedulers.Add(new TCPFairScheduler(GlobalVariables.capacityBps, mlas[i]));
                         break;
                     case SchedulerType.EDFPreEmptive:
-                        midSchedulers.Add(new EDFPreEmptiveScheduler(GlobalVariables.capacityBps,  mlas[i]));
+                        midSchedulers.Add(new EDFPreEmptiveScheduler(GlobalVariables.capacityBps, mlas[i]));
                         break;
                     case SchedulerType.EDFNonPreEmptive:
                         midSchedulers.Add(new EDFNonPreEmptiveScheduler(GlobalVariables.capacityBps, mlas[i]));
                         break;
                     case SchedulerType.VrikshaNonKilling:
-                        midSchedulers.Add(new VrikshaNonKillingScheduler(GlobalVariables.capacityBps,  mlas[i], 0));
+                        midSchedulers.Add(new VrikshaNonKillingScheduler(GlobalVariables.capacityBps, mlas[i], 0));
                         break;
                     case SchedulerType.D3:
-                        midSchedulers.Add(new D3Scheduler(GlobalVariables.capacityBps,  mlas[i], true));
+                        midSchedulers.Add(new D3Scheduler(GlobalVariables.capacityBps, mlas[i], true));
                         break;
                     case SchedulerType.SJFPreEmptive:
                         midSchedulers.Add(new SJFPreEmptiveScheduler(GlobalVariables.capacityBps, mlas[i]));
@@ -142,25 +135,29 @@ namespace VrikshaSim
                 }
             }
             List<Worker> workers = new List<Worker>();
-            for (int i = 0; i < GlobalVariables.NumWorkers; i++) {
+            for (int i = 0; i < GlobalVariables.NumWorkers; i++)
+            {
                 workers.Add(new Worker(GlobalVariables.NumQueuesInWorker, midSchedulers[i / GlobalVariables.NumWorkerPerMla]));
             }
 
             double timeSinceLastRequestInjectionSec = 1;
             int requestNumber = 0;
-            while (requestNumber < GlobalVariables.NumRequestsToSimulate) { // TODO:
-                if (timeSinceLastRequestInjectionSec >= GlobalVariables.requestGenerationIntervalSec) {
-                    
+            while (requestNumber < GlobalVariables.NumRequestsToSimulate)
+            { // TODO:
+                if (timeSinceLastRequestInjectionSec >= GlobalVariables.requestGenerationIntervalSec)
+                {
+
                     // Console.WriteLine("RNum: {2}, F: {0}, S: {1}", f, s, requestNumber);
                     Randomness rnd = GlobalVariables.rnd;
                     double fs = GlobalVariables.workerComputationTimeMeanSec, fsStdev = GlobalVariables.workerComputationTimeStdevSec;
                     double f = Math.Max(fs - 1.0 * fsStdev, Math.Min(rnd.GetNormalSample(fs, fsStdev), fs + 1.0 * fsStdev));
                     double ss = GlobalVariables.mlaComputationTimeMeanSec, ssStdev = GlobalVariables.mlaComputationTimeStdevSec;
                     double s = Math.Max(ss - 1.0 * ssStdev, Math.Min(rnd.GetNormalSample(ss, ssStdev), ss + 1.0 * ssStdev));
-                    GlobalVariables.requests.Add(new Request(requestNumber, 0.25, f, s));
+                    GlobalVariables.requests.Add(new Request(requestNumber, f, s));
                     // Console.Error.WriteLine("Injecting {0}th request at time {1}", requestNumber, GlobalVariables.currentTimeSec);
                     timeSinceLastRequestInjectionSec = 0;
-                    foreach (Worker w in workers) {
+                    foreach (Worker w in workers)
+                    {
                         Task t = Task.CreateNewTask(requestNumber, TaskType.WorkerTask);
                         w.InsertTask(t);
                     }
@@ -171,13 +168,16 @@ namespace VrikshaSim
                     timeSinceLastRequestInjectionSec += GlobalVariables.timeIncrementSec;
                 }
 
-                foreach(Worker w in workers) {
+                foreach (Worker w in workers)
+                {
                     w.AdvanceTime(GlobalVariables.timeIncrementSec);
                 }
-                foreach(FlowScheduler fs in midSchedulers) {
+                foreach (FlowScheduler fs in midSchedulers)
+                {
                     fs.AdvanceTime(GlobalVariables.timeIncrementSec);
                 }
-                foreach(MLA m in mlas) {
+                foreach (MLA m in mlas)
+                {
                     m.AdvanceTime(GlobalVariables.timeIncrementSec);
                 }
                 topScheduler.AdvanceTime(GlobalVariables.timeIncrementSec);
@@ -216,7 +216,7 @@ namespace VrikshaSim
                     responseTimes[999 * responseTimes.Count / 1000],
                     tla.completedRequests.Sum(r => r.informationContent) / tla.completedRequests.Count,
                     GlobalVariables.numFlowsMissed);
-            if (logOut!=null)
+            if (logOut != null)
             {
                 logOut.Write("Completed Requests: {0}, ", tla.completedRequests.Count);
                 logOut.WriteLine("Min: {0}, Max: {1} Mean: {2}, 99%: {3}, 99.9%: {4} MeanIC: {5}, FlowsMissed: {6}", tla.completedRequests.Min(r => r.TimeTaken),
@@ -232,13 +232,13 @@ namespace VrikshaSim
             Console.Error.WriteLine("<MLA> NumFlowCompleted: {0} Mean: {1} 50%: {2} 70%: {3}, 80%: {4}, 90%: {5}, 95%: {6}, 99%: {7} 99.5%: {8} ",
                 count,
                 GlobalVariables.flowCompletionTimesMla.Sum(r => r) / count,
-                GlobalVariables.flowCompletionTimesMla[(int) (0.5 * count)],
-                GlobalVariables.flowCompletionTimesMla[(int) (0.7 * count)],
-                GlobalVariables.flowCompletionTimesMla[(int) (0.8 * count)],
-                GlobalVariables.flowCompletionTimesMla[(int) (0.9 * count)],
-                GlobalVariables.flowCompletionTimesMla[(int) (0.95 * count)],
-                GlobalVariables.flowCompletionTimesMla[(int) (0.99 * count)],
-                GlobalVariables.flowCompletionTimesMla[(int) (0.995 * count)]);
+                GlobalVariables.flowCompletionTimesMla[(int)(0.5 * count)],
+                GlobalVariables.flowCompletionTimesMla[(int)(0.7 * count)],
+                GlobalVariables.flowCompletionTimesMla[(int)(0.8 * count)],
+                GlobalVariables.flowCompletionTimesMla[(int)(0.9 * count)],
+                GlobalVariables.flowCompletionTimesMla[(int)(0.95 * count)],
+                GlobalVariables.flowCompletionTimesMla[(int)(0.99 * count)],
+                GlobalVariables.flowCompletionTimesMla[(int)(0.995 * count)]);
             count = GlobalVariables.flowCompletionTimesTla.Count;
             Console.Error.WriteLine("<TLA> NumFlowCompleted: {0} Mean: {1} Median: {2} 99Perc: {3} 99.5Perc: {4} 99.9%: {5}",
                 count,
@@ -259,24 +259,24 @@ namespace VrikshaSim
             List<Double> mlaUtilization = new List<Double>();
             foreach (FlowScheduler s in midSchedulers)
             {
-                mlaUtilization.Add(s.bytesCount * 8 / (GlobalVariables.capacityBps * (GlobalVariables.endCountingUtilization - GlobalVariables.startCountingUtilization)) );
+                mlaUtilization.Add(s.bytesCount * 8 / (GlobalVariables.capacityBps * (GlobalVariables.endCountingUtilization - GlobalVariables.startCountingUtilization)));
             }
             Console.Error.WriteLine("<MLA> Utilization Mean: {0} Max = {1} Min = {2}", mlaUtilization.Average(), mlaUtilization.Max(), mlaUtilization.Min()); ;
-            
+
         }
 
-        
-        
+
+
         static void MeetingFlowDeadlinesExperiment(string[] args)
         {
             int numIterations = 1;
-            
+
             int totalDeadlinesMet = 0;
             for (int i = 0; i < numIterations; i++)
             {
                 GlobalVariables.currentTimeSec = 0;
                 List<Flow> flowsToSchedule = DataGenerator.D3GenerateData(30, DataGenerator.D3DeadlineTag.VeryTight);
-                EDFPreEmptiveScheduler scheduler = new EDFPreEmptiveScheduler(1000000000.0, new TLA());
+                EDFPreEmptiveScheduler scheduler = new EDFPreEmptiveScheduler(1000000000.0, new HLA());
                 List<Flow> finishedFlows = scheduler.ScheduleFlows(flowsToSchedule);
                 //Console.WriteLine("#Flows completed: {0}", finishedFlows.Count(flow => flow.IsFinished()));
                 //Console.WriteLine("#Flows Deadline Met: {0}", finishedFlows.Count(flow => flow.DeadlineMet()));
@@ -284,13 +284,13 @@ namespace VrikshaSim
                 totalDeadlinesMet += numDeadlinesMet;
             }
             Console.WriteLine("EDF Pre : #Avg. {0}", totalDeadlinesMet / 1000.0);
-            
+
             totalDeadlinesMet = 0;
             for (int i = 0; i < 1; i++)
             {
                 GlobalVariables.currentTimeSec = 0;
                 List<Flow> flowsToSchedule = DataGenerator.D3GenerateData(30, DataGenerator.D3DeadlineTag.VeryTight);
-                D3Scheduler scheduler = new D3Scheduler(1000000000.0, new TLA(), true);
+                D3Scheduler scheduler = new D3Scheduler(1000000000.0, new HLA(), true);
                 List<Flow> finishedFlows = scheduler.ScheduleFlows(flowsToSchedule);
                 //Console.WriteLine("#Flows completed: {0}", finishedFlows.Count(flow => flow.IsFinished()));
                 //Console.WriteLine("#Flows Deadline Met: {0}", finishedFlows.Count(flow => flow.DeadlineMet()));
@@ -298,7 +298,7 @@ namespace VrikshaSim
                 totalDeadlinesMet += numDeadlinesMet;
             }
             Console.WriteLine("D3 : #Avg. {0}", totalDeadlinesMet / 1000.0);
-            
+
             // TCP Fair Scheduler
             /*
             totalDeadlinesMet = 0;
@@ -319,68 +319,9 @@ namespace VrikshaSim
     }
 
 
+
+
     
-    
-    public class Request
-    {
-        public int requestId;
-        public double beginSec;
-        public double endSec;
-        public double deadlineSec;
-        public double numFlowsCompleted; //Measure of how many flows have been completed, information content in the request
-        public double informationContent;
-        public double workerTaskTimeMeanSec;
-        public double mlaTaskTimeMeanSec;
-
-        public Request(int requestId, double deadlineSec, double workerTaskTimeMeanSec, double mlaTaskTimeMeanSec) // double firstComputationSec, double secondComputationSec) 
-        {
-            this.beginSec = GlobalVariables.currentTimeSec;
-            this.requestId = requestId;
-            this.deadlineSec = deadlineSec;
-            this.numFlowsCompleted = 0;
-            this.informationContent = 0;
-            this.workerTaskTimeMeanSec = workerTaskTimeMeanSec;
-            this.mlaTaskTimeMeanSec = mlaTaskTimeMeanSec;
-        }
-
-        public double TimeTaken
-        {
-            get { return endSec - beginSec; }
-        }
-    }
-
-    public class Task
-    {
-        public double processingTimeSec;
-        public int requestId;
-        public double progressSec;
-        public TaskType taskType;
-        private Task(int requestId, double processingTime, TaskType t)
-        {
-            this.requestId = requestId;
-            this.processingTimeSec = processingTime;
-            this.taskType = t;
-        }
-
-        public static Task CreateNewTask(int requestId, TaskType type)
-        {
-            Randomness rnd = GlobalVariables.rnd;
-            switch (type)
-            {
-                case TaskType.WorkerTask:
-                    double fs = GlobalVariables.requests[requestId].workerTaskTimeMeanSec, fsStdev = GlobalVariables.workerComputationTimeStdevSec;
-                    double f = Math.Max(fs - 1.0 * fsStdev, Math.Min(rnd.GetNormalSample(fs, fsStdev), fs + 1.0 * fsStdev));
-                    return new Task(requestId, f, TaskType.WorkerTask);
-                case TaskType.MlaTask:
-                    double ss = GlobalVariables.requests[requestId].mlaTaskTimeMeanSec, ssStdev = GlobalVariables.mlaComputationTimeStdevSec;
-                    double s = Math.Max(ss - 1.0 * ssStdev, Math.Min(rnd.GetNormalSample(ss, ssStdev), ss + 1.0 * ssStdev));
-                    return new Task(requestId, s, TaskType.MlaTask);
-                default:
-                    return new Task(requestId, 0, TaskType.TlaTask);
-            }
-        }
-
-    }
 
 
     public class Test
@@ -398,15 +339,15 @@ namespace VrikshaSim
             // SJF
             int numCompleted = 0;
             double currentTime = 0;
-            List<Double> responseTimes = new List<Double> ();
+            List<Double> responseTimes = new List<Double>();
             List<Task> finished = new List<Task>();
-            var A = l.OrderBy(x => x.processingTimeSec).ToList(); 
+            var A = l.OrderBy(x => x.processingTimeSec).ToList();
             foreach (Task t in A)
             {
                 currentTime += t.processingTimeSec;
                 responseTimes.Add(currentTime);
                 numCompleted += 1;
-               // Console.WriteLine(numCompleted);
+                // Console.WriteLine(numCompleted);
             }
 
             responseTimes.Sort();
@@ -424,7 +365,7 @@ namespace VrikshaSim
                 //finished.Add(t);
                 responseTimes.Add(currentTime);
                 numCompleted += 1;
-               // Console.WriteLine(numCompleted);
+                // Console.WriteLine(numCompleted);
             }
             responseTimes.Sort();
             avg = responseTimes.Average();
@@ -476,14 +417,14 @@ namespace VrikshaSim
         {
             TextWriter logOut = null; ;
             try
-                {
-                    logOut = new StreamWriter("waitTime.txt");
-                    Console.SetOut(logOut);
-                }
-                catch (IOException exc)
-                {
-                    Console.WriteLine(exc.Message + "Cannot open file.");
-                }
+            {
+                logOut = new StreamWriter("waitTime.txt");
+                Console.SetOut(logOut);
+            }
+            catch (IOException exc)
+            {
+                Console.WriteLine(exc.Message + "Cannot open file.");
+            }
             List<Randomness> generators = new List<Randomness>();
             int K = 40;
             for (int i = 0; i < K + 1; i++)
@@ -522,80 +463,7 @@ namespace VrikshaSim
             }
             logOut.Close();
         }
-        
+
     }
 
-    public class GlobalVariables
-    {
-        public static List<Request> requests;
-        public static List<double> flowCompletionTimesMla;
-        public static List<double> flowCompletionTimesTla;
-
-        
-        public static int NumRequestsToSimulate = 2400;
-        public static int NumEdgeRequestsToDelete = 200;
-        public static double currentTimeSec = 0;
-        public static int numFlowsMissed = 0;
-
-        public static int NumWorkerPerMla = 40;
-        public static int NumMlaPerTla = 40;
-        public static int NumWorkers = 1600;
-        public static int NumQueuesInWorker = 10;
-        public static int NumQueuesInMla = 20;
-
-        public static double capacityBps = 1000000000.0;
-
-        public static double timeIncrementSec = 0.001;
-        public static double requestGenerationIntervalSec = 0.012; // TODO: 1 every 5 ms?
-
-
-        public static double flowSizeBytes = 50000;
-        public static double flowSizeMinBytes = 20000;
-        public static double flowSizeMaxBytes = 70000;
-        public static double workerMlaFlowDeadlineSec = 0.019;
-        public static double mlaTlaFlowDeadlineSec = 0.019;
-
-        public static double workerComputationTimeMeanSec = 0.045; // TODO: Fix!! Assume 10 threads at Workers
-        public static double mlaComputationTimeMeanSec = 0.085; // TODO: Fix!! Assume 20 threads at MLA
-        public static double workerComputationTimeStdevSec = 0.02;
-        public static double mlaComputationTimeStdevSec = 0.03;
-          
-        // Wait times before sending partial responses; Set to very high value if 
-        // wait for all responses
-        public static double mlaWaitTimeSec = .04;
-        public static double tlaWaitTimeSec = .06;
-
-        public static double startCountingUtilization = 8.0;
-        public static double endCountingUtilization = 10.0;
-
-        public static Randomness rnd;
-
-        public static void init(int seed)
-        {
-            requests = new List<Request>();
-            flowCompletionTimesMla = new List<double>();
-            flowCompletionTimesTla = new List<double>();
-            rnd = new Randomness(seed);
-            numFlowsMissed = 0;
-        }
-    }
-
-
-    public enum SchedulerType
-    {
-        TCP,
-        VrikshaNonKilling,
-        EDFNonPreEmptive,
-        EDFPreEmptive,
-        D3,
-        SJFPreEmptive
-    }
-
-
-    public enum TaskType
-    {
-        WorkerTask,
-        MlaTask,
-        TlaTask
-    }
 }

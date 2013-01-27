@@ -56,6 +56,7 @@ namespace VrikshaSim
         {
             for (int i = 0; i < numQueues; i++)
             {
+                //Console.Error.WriteLine("Adding worker response at " + currentTasks[i].processingTimeSec);
                 if (currentTasks[i] == null && tasksToSchedule.Count > 0)
                 {
                     ScheduleNewTask(i);
@@ -63,11 +64,12 @@ namespace VrikshaSim
                 if (currentTasks[i] != null)
                 {
                     currentTasks[i].progressSec += timeToSimulate;
+                    
                     if (currentTasks[i].progressSec >= currentTasks[i].processingTimeSec)
                     {
                         // A Task completed; Add a new flow to the flow scheduler
                         scheduler.AddFlowToSchedule(Flow.CreateNewFlow(currentTasks[i], 1.0)); // TODO: Fix
-                        currentTasks[i] = null;
+                       currentTasks[i] = null;
                     }
                 }
             }
@@ -108,7 +110,7 @@ namespace VrikshaSim
             {
                 numFlowsPerRequest[requestId] += 1;
                 informationContentPerRequest[requestId] += f.informationContent;
-                // Console.Error.WriteLine("{0} New Flow: {1}", requestId, numFlowsPerRequest[requestId]);
+                //Console.Error.WriteLine("{0} New Flow: {1} {2}", requestId, numFlowsPerRequest[requestId], GlobalVariables.currentTimeSec);
             }
             else
             {
@@ -125,13 +127,17 @@ namespace VrikshaSim
             foreach (KeyValuePair<int, double> req in firstFlowArrivalTimePerRequest)
             {
                 // If time expired, send partial results, or if all flows received
-                if ((GlobalVariables.currentTimeSec >= req.Value + GlobalVariables.mlaWaitTimeSec)
+                double beginTime = GlobalVariables.requests[req.Key].beginSec;
+                if ((GlobalVariables.currentTimeSec >= beginTime + GlobalVariables.mlaWaitTimeSec)
                     || (numFlowsPerRequest[req.Key] == GlobalVariables.NumWorkerPerMla))
                 {
-                    // Console.Error.WriteLine("{0} MLA Inserting a task", req.Key); 
+                    //Console.Error.WriteLine("{0} MLA Inserting a task at " + GlobalVariables.currentTimeSec); 
                     GlobalVariables.requests[req.Key].numFlowsCompleted += numFlowsPerRequest[req.Key];
-                    InsertTask(Task.CreateNewTask(req.Key, TaskType.MlaTask));
-                    toRemove.Add(req.Key); ;
+                    if (GlobalVariables.currentTimeSec <= beginTime + GlobalVariables.mlaWaitTimeSec + 2 * GlobalVariables.timeIncrementSec)
+                    {
+                        InsertTask(Task.CreateNewTask(req.Key, TaskType.MlaTask));
+                    }
+                    toRemove.Add(req.Key);
                     isRequestProcessed[req.Key] = true;
                 }
             }
@@ -169,8 +175,140 @@ namespace VrikshaSim
         }
     }
 
+    /*
+    public class IterativeMLA : MLA
+    {
+        public Dictionary<int, bool> isPartlyProcessed;
+        public IterativeMLA(int numQueues, FlowScheduler scheduler)
+            : base(numQueues, scheduler)
+        {
+            isPartlyProcessed = new Dictionary<int,bool>();
+        }
 
-    class TLA : Machine
+        public override void AdvanceTime(double timeToSimulate)
+        {
+            List<int> toRemove = new List<int>();
+            // First check if some new task needs to be added
+            foreach (KeyValuePair<int, double> req in firstFlowArrivalTimePerRequest)
+            {
+                // If time expired, send partial results, or if all flows received
+                double beginTime = GlobalVariables.requests[req.Key].beginSec;
+                if (numFlowsPerRequest[req.Key] == GlobalVariables.NumWorkerPerMla)
+                { // Request is complete
+                    InsertTask(Task.CreateNewTask(req.Key, TaskType.MlaTask));
+                    toRemove.Add(req.Key);
+                    isRequestProcessed[req.Key] = true;
+                }
+                else if (numFlowsPerRequest[req.Key] >= GlobalVariables.NumWorkerPerMla / 2.0)
+                { // Request is partly complete
+                    InsertTask(Task.CreateNewTask(req.Key, TaskType.MlaTask));
+                    toRemove.Add(req.Key);
+                    isPartlyProcessed[req.Key] = true;
+                }
+                else if (GlobalVariables.currentTimeSec >=
+                  beginTime + GlobalVariables.mlaWaitTimeSec)
+                { // Timed out
+                    GlobalVariables.requests[req.Key].numFlowsCompleted += numFlowsPerRequest[req.Key];
+                    InsertTask(Task.CreateNewTask(req.Key, TaskType.MlaTask));
+                    toRemove.Add(req.Key);
+                    isRequestProcessed[req.Key] = true;
+                }
+            }
+
+            foreach (int i in toRemove)
+            {
+                numFlowsPerRequest.Remove(i);
+                firstFlowArrivalTimePerRequest.Remove(i);
+            }
+
+            for (int i = 0; i < numQueues; i++)
+            {
+                if (currentTasks[i] == null && tasksToSchedule.Count > 0)
+                {
+                    ScheduleNewTask(i);
+                }
+                if (currentTasks[i] != null)
+                {
+                    currentTasks[i].progressSec += timeToSimulate;
+                    if (currentTasks[i].progressSec >= currentTasks[i].processingTimeSec)
+                    {
+                        //Console.Error.WriteLine("\nAdding a flow to the TopScheduler.\n");
+                        // A Task completed; Add a new flow to the flow scheduler
+                        scheduler.AddFlowToSchedule(Flow.CreateNewFlow(currentTasks[i],
+                            informationContentPerRequest[currentTasks[i].requestId] / GlobalVariables.NumWorkerPerMla));
+                        currentTasks[i] = null;
+                    }
+                }
+            }
+        }
+    }
+    */
+
+
+    public class SmartMLA : MLA
+    {
+        public SmartMLA(int numQueues, FlowScheduler scheduler)
+            : base(numQueues, scheduler)
+        {
+        }
+            
+        public override void AdvanceTime(double timeToSimulate)
+        {
+            //Console.Out.WriteLine("Called");
+            List<int> toRemove = new List<int>();
+            // First check if some new task needs to be added
+            foreach (KeyValuePair<int, double> req in firstFlowArrivalTimePerRequest)
+            {
+                // If time expired, send partial results, or if all flows received
+                double beginTime = GlobalVariables.requests[req.Key].beginSec;
+                double workerT = GlobalVariables.requests[req.Key].workerTaskTimeMeanSec;
+                double mlaT = GlobalVariables.requests[req.Key].mlaTaskTimeMeanSec;
+
+                double waitTime = GlobalVariables.GetWaitTime(workerT, mlaT);
+                if ((GlobalVariables.currentTimeSec >= beginTime + waitTime)
+                    || (numFlowsPerRequest[req.Key] == GlobalVariables.NumWorkerPerMla))
+                {
+                    //Console.Error.WriteLine("{0} MLA Inserting a task at " + GlobalVariables.currentTimeSec); 
+                    GlobalVariables.requests[req.Key].numFlowsCompleted += numFlowsPerRequest[req.Key];
+                    if (GlobalVariables.currentTimeSec <= beginTime + GlobalVariables.mlaWaitTimeSec + 2 * GlobalVariables.timeIncrementSec)
+                    {
+                        InsertTask(Task.CreateNewTask(req.Key, TaskType.MlaTask));
+                    }
+                    toRemove.Add(req.Key);
+                    isRequestProcessed[req.Key] = true;
+                }
+            }
+            foreach (int i in toRemove)
+            {
+                numFlowsPerRequest.Remove(i);
+                firstFlowArrivalTimePerRequest.Remove(i);
+            }
+
+            for (int i = 0; i < numQueues; i++)
+            {
+                if (currentTasks[i] == null && tasksToSchedule.Count > 0)
+                {
+                    ScheduleNewTask(i);
+                }
+                if (currentTasks[i] != null)
+                {
+                    currentTasks[i].progressSec += timeToSimulate;
+                    if (currentTasks[i].progressSec >= currentTasks[i].processingTimeSec)
+                    {
+                        //Console.Error.WriteLine("\nAdding a flow to the TopScheduler.\n");
+                        // A Task completed; Add a new flow to the flow scheduler
+                        scheduler.AddFlowToSchedule(Flow.CreateNewFlow(currentTasks[i],
+                            informationContentPerRequest[currentTasks[i].requestId] / GlobalVariables.NumWorkerPerMla));
+                        currentTasks[i] = null;
+                    }
+                }
+            }
+
+        }
+    }
+
+
+    class HLA : Machine
     {
         public Dictionary<int, int> numFlowsPerRequest;
         public List<Request> completedRequests;
@@ -178,7 +316,7 @@ namespace VrikshaSim
         public Dictionary<int, bool> isRequestProcessed;
         public Dictionary<int, double> informationContentPerRequest;
         
-        public TLA() : base (0)
+        public HLA() : base (0)
         {
             tasksToSchedule = new List<Task>();
             numFlowsPerRequest = new Dictionary<int, int>();
@@ -202,14 +340,17 @@ namespace VrikshaSim
             if (numFlowsPerRequest.ContainsKey(requestId))
             {
                 numFlowsPerRequest[requestId] += 1;
-                informationContentPerRequest[requestId] += f.informationContent; ;
+                informationContentPerRequest[requestId] += f.informationContent;
             }
             else
             {
-                // Console.Error.WriteLine("{0} TLA inserted flow {1}", f.requestId, isRequestProcessed.ContainsKey(requestId));
+                //Console.Error.WriteLine("{0} TLA inserted flow {1}", f.requestId, isRequestProcessed.ContainsKey(requestId));
                 numFlowsPerRequest.Add(requestId, 1);
                 firstFlowArrivalTimePerRequest.Add(requestId, GlobalVariables.currentTimeSec);
                 informationContentPerRequest.Add(requestId, f.informationContent);
+                //Console.Error.WriteLine("Added flow: " + requestId + " at " 
+                //s    + (GlobalVariables.currentTimeSec - GlobalVariables.requests[requestId].beginSec));
+                //Console.Out.WriteLine("Added " + f.informationContent);
             }
         }
 
@@ -220,11 +361,19 @@ namespace VrikshaSim
             foreach (KeyValuePair<int, double> req in firstFlowArrivalTimePerRequest)
             {
                 // If time expired, send partial results, or if all flows received
-                if ((GlobalVariables.currentTimeSec >= req.Value + GlobalVariables.tlaWaitTimeSec)
+                double beginTime = GlobalVariables.requests[req.Key].beginSec;
+                if ((GlobalVariables.currentTimeSec >= beginTime + GlobalVariables.tlaWaitTimeSec)
                     || (numFlowsPerRequest[req.Key] == GlobalVariables.NumMlaPerTla))
                 {
+                    //if (numFlowsPerRequest[req.Key] == GlobalVariables.NumMlaPerTla)
+                    //{
+                    //    Console.Error.WriteLine("Received all responses at " + (GlobalVariables.currentTimeSec - beginTime));
+                    //}
                     GlobalVariables.requests[req.Key].numFlowsCompleted += numFlowsPerRequest[req.Key];
-                    InsertTask(Task.CreateNewTask(req.Key, TaskType.TlaTask));
+                    if (GlobalVariables.currentTimeSec <= beginTime + GlobalVariables.tlaWaitTimeSec + 2 * GlobalVariables.timeIncrementSec)
+                    {
+                        InsertTask(Task.CreateNewTask(req.Key, TaskType.TlaTask));
+                    }
                     toRemove.Add(req.Key);
                     isRequestProcessed[req.Key] = true;
                 }
@@ -246,7 +395,9 @@ namespace VrikshaSim
                 //    r.firstComputationSec, r.secondComputationSec, 
                 //    r.numFlowsCompleted, r.informationContent);
                 r.endSec = GlobalVariables.currentTimeSec;
+               
                 completedRequests.Add(GlobalVariables.requests[requestId]);
+                //Console.Error.Write("Completed " + requestId);
                 tasksToSchedule.RemoveAt(0);
             }
         }

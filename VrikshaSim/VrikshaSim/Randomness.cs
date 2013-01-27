@@ -59,6 +59,11 @@ namespace VrikshaSim
             return GetNormal() * stdev + mean;
         }
 
+        public double GetLogNormalSample(double mean, double stdev)
+        {
+            return Math.Exp(GetNormal() * stdev + mean);
+        }
+
         public double GetExponentialSample(double mean)
         {
             //
@@ -71,6 +76,7 @@ namespace VrikshaSim
             Debug.Assert(mean > 0);
             return -1 * mean * Math.Log(pickRandomDouble());
         }
+
         public double GetParetoSample(double shape_alpha, double scale)
         {
             // 

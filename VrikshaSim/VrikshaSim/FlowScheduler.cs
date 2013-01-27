@@ -38,7 +38,69 @@ namespace VrikshaSim
 
         public abstract List<Flow> ScheduleFlows(List<Flow> flows);
     };
- 
+
+
+    public class InfiniteCapScheduler : FlowScheduler
+    {
+        public InfiniteCapScheduler(double cap, Machine aggregator)
+            : base(cap, aggregator)
+        {
+            name = "InfiniteCap";
+        }
+
+        public override void AdvanceTime(double timeToSimulate)
+        {
+            int numRunningFlows = flowsToSchedule.Count;
+            if (numRunningFlows > 0)
+            {
+                double fairRate = capacityBps / numRunningFlows;
+
+                foreach (Flow f in flowsToSchedule)
+                {
+                    double timeToEnd = f.estimateEndTime(fairRate) - GlobalVariables.currentTimeSec;
+                    f.AdvanceBy(timeToEnd, fairRate);
+                    aggregator.InsertFlow(f);
+                    aggregator.AddFlowCompletionTime(f.endSec - f.beginSec);
+                }
+                finishedFlows.AddRange(flowsToSchedule);
+                flowsToSchedule.RemoveAll(flow => flow.IsFinished());
+            }
+        }
+
+        public override List<Flow> ScheduleFlows(List<Flow> flows)
+        {
+            List<Flow> unfinishedFlows = flows,
+            finishedFlows = new List<Flow>();
+
+            while (unfinishedFlows.Count > 0)
+            {
+                int numRunningFlows = unfinishedFlows.Count;
+                double fairRate = capacityBps / numRunningFlows;
+
+                double firstFinishSec = unfinishedFlows.Min(flow => flow.estimateEndTime(fairRate));
+
+                // advance time to firstFinish
+                foreach (Flow f in unfinishedFlows)
+                {
+                    f.AdvanceBy(firstFinishSec - GlobalVariables.currentTimeSec, fairRate);
+                }
+
+
+                finishedFlows.AddRange(unfinishedFlows.FindAll(flow => flow.IsFinished()));
+                unfinishedFlows.RemoveAll(flow => flow.IsFinished());
+
+                GlobalVariables.currentTimeSec = firstFinishSec;
+
+                //Console.WriteLine("{1} # flows rem = {0}",
+                //                   unfinishedFlows.Count,
+                //                   GlobalVariables.currentTimeSec.ToString("G4"));
+            }
+
+            return finishedFlows;
+        }
+
+    }
+
     public class TCPFairScheduler : FlowScheduler
     {
         public TCPFairScheduler(double cap, Machine aggregator)
@@ -425,7 +487,7 @@ namespace VrikshaSim
             {
                 
                 Request r = GlobalVariables.requests[f.task.requestId];
-                double slack = r.beginSec + r.deadlineSec - GlobalVariables.currentTimeSec;
+                double slack = r.beginSec - GlobalVariables.currentTimeSec;
                 //double slack = f.sizeBytes;
                 if (level == 0) // i.e Worker -> MLA
                 {
