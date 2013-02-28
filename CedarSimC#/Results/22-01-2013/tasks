@@ -1,0 +1,13 @@
+1. Look at lower deadlines for Jeff Dean's
+2. DcTcp - True Distribution
+3. Both - Vary topology (#Workers/Aggregators etc.)
+4. Summary of Results -- Jeff Dean / DcTcp.
+
+24/01/2013
+5. DcTcp for Topology -- 
+6. Whether order-statistics thing works
+7. Facebook metrics and whether assumption is correct
+8. Facebook's topology hotspots
+9. Comparison of different approaches, and show if improvements are there
+
+5. How accurate do you estimate based on order-statistics | know the distribution.
