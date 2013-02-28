@@ -45,7 +45,7 @@ public class GlobalVariables
 	// Simulation Parameters
 	/********************************************/
 	// Request parameters
-	public static int NumRequestsToSimulate = 1000;
+	public static int NumRequestsToSimulate = 1;
 	public static int NumEdgeRequestsToDelete = 0;
 	public static double timeIncrementSec = 0.001;
 	public static double requestGenerationIntervalSec = 0.01; // TODO: 1 every 5 ms?

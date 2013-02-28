@@ -140,7 +140,7 @@ public class MLA : Machine
 			t.progressSec += timeToSimulate;
 			if (t.progressSec >= t.processingTimeSec) {
 				hla.InsertFlow (Flow.CreateNewFlow (t, 
-                        informationContentPerRequest [t.requestId] / GlobalVariables.NumWorkerPerMla));
+                        informationContentPerRequest [t.requestId]));
 				finished.Add (t);
 			}
 		}
@@ -155,9 +155,95 @@ public class MLA : Machine
 	}
 }
 
+public class HLA : Machine
+{
+	public Dictionary<int, int> numFlowsPerRequest;
+	public List<Request> completedRequests;
+	public Dictionary<int, double> firstFlowArrivalTimePerRequest;
+	public Dictionary<int, bool> isRequestProcessed;
+	public Dictionary<int, double> informationContentPerRequest;
+	
+	public HLA () : base ()
+	{
+		tasksToSchedule = new List<Task> ();
+		numFlowsPerRequest = new Dictionary<int, int> ();
+		completedRequests = new List<Request> ();
+		firstFlowArrivalTimePerRequest = new Dictionary<int, double> ();
+		isRequestProcessed = new Dictionary<int, bool> ();
+		informationContentPerRequest = new Dictionary<int, double> ();
+	}
+	
+	public override void InsertFlow (Flow f)
+	{
+		
+		int requestId = f.task.requestId;
+		// Flow coming in late
+		
+		if (isRequestProcessed.ContainsKey (requestId)) {
+			return;
+		}
+		
+		if (numFlowsPerRequest.ContainsKey (requestId)) {
+			numFlowsPerRequest [requestId] += 1;
+			informationContentPerRequest [requestId] += f.informationContent;
+		} else {
+			//Console.Error.WriteLine("{0} TLA inserted flow {1}", f.requestId, isRequestProcessed.ContainsKey(requestId));
+			numFlowsPerRequest.Add (requestId, 1);
+			firstFlowArrivalTimePerRequest.Add (requestId, GlobalVariables.currentTimeSec);
+			informationContentPerRequest.Add (requestId, f.informationContent);
+			//Console.Error.WriteLine("Added flow: " + requestId + " at " 
+			//s    + (GlobalVariables.currentTimeSec - GlobalVariables.requests[requestId].beginSec));
+			//Console.Out.WriteLine("Added " + f.informationContent);
+		}
+	}
+	
+	public override void AdvanceTime (double timeToSimulate)
+	{
+		// First check if some new task needs to be added
+		List<int> toRemove = new List<int> ();
+		foreach (KeyValuePair<int, double> req in firstFlowArrivalTimePerRequest) {
+			// If time expired, send partial results, or if all flows received
+			double beginTime = GlobalVariables.requests [req.Key].beginSec;
+			if ((GlobalVariables.currentTimeSec >= beginTime + GlobalVariables.tlaWaitTimeSec)
+			    || (numFlowsPerRequest [req.Key] == GlobalVariables.NumMlaPerTla)) {
+				GlobalVariables.requests [req.Key].numFlowsCompleted += numFlowsPerRequest [req.Key];
+				if (GlobalVariables.currentTimeSec <= beginTime + GlobalVariables.tlaWaitTimeSec + 2 * GlobalVariables.timeIncrementSec) {
+					InsertTask (Task.CreateNewTask (req.Key, TaskType.TlaTask));
+				}
+				toRemove.Add (req.Key);
+				isRequestProcessed [req.Key] = true;
+			}
+		}
+		foreach (int i in toRemove) {
+			numFlowsPerRequest.Remove (i);
+			firstFlowArrivalTimePerRequest.Remove (i);
+		}
+		
+		
+		List<Task> finished = new List<Task> ();
+		foreach (Task t in tasksToSchedule) {
+			int requestId = t.requestId;
+			Request r = GlobalVariables.requests [requestId];
+			r.informationContent = informationContentPerRequest [r.requestId];
+			r.endSec = GlobalVariables.currentTimeSec;
+			t.progressSec += timeToSimulate;
+			completedRequests.Add (GlobalVariables.requests [requestId]);
+			finished.Add (t);
+			
+		}
+		foreach (Task t in finished) {
+			tasksToSchedule.Remove (t);
+		}
+	}
+	
+	public override void AddFlowCompletionTime (double fTime)
+	{
+		GlobalVariables.flowCompletionTimesTla.Add (fTime);
+	}
+}
+
 public class CedarMLA : MLA
 {
-       
 	public CedarMLA (int id, int numQueues, Machine tla) : base(id, numQueues, tla)
 	{
 	}
@@ -651,108 +737,5 @@ public class OracleMLA : MLA
 
 }
 
-public class HLA : Machine
-{
-	public Dictionary<int, int> numFlowsPerRequest;
-	public List<Request> completedRequests;
-	public Dictionary<int, double> firstFlowArrivalTimePerRequest;
-	public Dictionary<int, bool> isRequestProcessed;
-	public Dictionary<int, double> informationContentPerRequest;
-        
-	public HLA () : base ()
-	{
-		tasksToSchedule = new List<Task> ();
-		numFlowsPerRequest = new Dictionary<int, int> ();
-		completedRequests = new List<Request> ();
-		firstFlowArrivalTimePerRequest = new Dictionary<int, double> ();
-		isRequestProcessed = new Dictionary<int, bool> ();
-		informationContentPerRequest = new Dictionary<int, double> ();
-	}
 
-	public override void InsertFlow (Flow f)
-	{
-            
-		int requestId = f.task.requestId;
-		// Flow coming in late
-            
-		if (isRequestProcessed.ContainsKey (requestId)) {
-			return;
-		}
-
-		if (numFlowsPerRequest.ContainsKey (requestId)) {
-			numFlowsPerRequest [requestId] += 1;
-			informationContentPerRequest [requestId] += f.informationContent;
-		} else {
-			//Console.Error.WriteLine("{0} TLA inserted flow {1}", f.requestId, isRequestProcessed.ContainsKey(requestId));
-			numFlowsPerRequest.Add (requestId, 1);
-			firstFlowArrivalTimePerRequest.Add (requestId, GlobalVariables.currentTimeSec);
-			informationContentPerRequest.Add (requestId, f.informationContent);
-			//Console.Error.WriteLine("Added flow: " + requestId + " at " 
-			//s    + (GlobalVariables.currentTimeSec - GlobalVariables.requests[requestId].beginSec));
-			//Console.Out.WriteLine("Added " + f.informationContent);
-		}
-	}
-
-	public override void AdvanceTime (double timeToSimulate)
-	{
-		// First check if some new task needs to be added
-		List<int> toRemove = new List<int> ();
-		foreach (KeyValuePair<int, double> req in firstFlowArrivalTimePerRequest) {
-			// If time expired, send partial results, or if all flows received
-			double beginTime = GlobalVariables.requests [req.Key].beginSec;
-			if ((GlobalVariables.currentTimeSec >= beginTime + GlobalVariables.tlaWaitTimeSec)
-				|| (numFlowsPerRequest [req.Key] == GlobalVariables.NumMlaPerTla)) {
-				GlobalVariables.requests [req.Key].numFlowsCompleted += numFlowsPerRequest [req.Key];
-				if (GlobalVariables.currentTimeSec <= beginTime + GlobalVariables.tlaWaitTimeSec + 2 * GlobalVariables.timeIncrementSec) {
-					InsertTask (Task.CreateNewTask (req.Key, TaskType.TlaTask));
-				}
-				toRemove.Add (req.Key);
-				isRequestProcessed [req.Key] = true;
-			}
-		}
-		foreach (int i in toRemove) {
-			numFlowsPerRequest.Remove (i);
-			firstFlowArrivalTimePerRequest.Remove (i);
-		}
-
-
-		List<Task> finished = new List<Task> ();
-		foreach (Task t in tasksToSchedule) {
-			int requestId = t.requestId;
-			Request r = GlobalVariables.requests [requestId];
-			r.informationContent = informationContentPerRequest [r.requestId] / GlobalVariables.NumMlaPerTla;
-			r.endSec = GlobalVariables.currentTimeSec;
-			t.progressSec += timeToSimulate;
-			completedRequests.Add (GlobalVariables.requests [requestId]);
-
-			finished.Add (t);
-
-		}
-		foreach (Task t in finished) {
-			tasksToSchedule.Remove (t);
-		}
-
-
-
-		if (tasksToSchedule.Count > 0) {
-			int requestId = tasksToSchedule [0].requestId;
-			Request r = GlobalVariables.requests [requestId];
-			r.informationContent = informationContentPerRequest [r.requestId] / GlobalVariables.NumMlaPerTla;
-			//Console.Error.WriteLine("Finished {0} at {1}, TimeTaken: {2}, FirstTime: {3}, SecondTime: {4}, NumFlowsCompleted: {5}, InformationContent: {6}", requestId, 
-			//    GlobalVariables.currentTimeSec, GlobalVariables.currentTimeSec - r.beginSec, 
-			//    r.firstComputationSec, r.secondComputationSec, 
-			//    r.numFlowsCompleted, r.informationContent);
-			r.endSec = GlobalVariables.currentTimeSec;
-               
-			completedRequests.Add (GlobalVariables.requests [requestId]);
-			//Console.Error.Write("Completed " + requestId);
-			tasksToSchedule.RemoveAt (0);
-		}
-	}
-
-	public override void AddFlowCompletionTime (double fTime)
-	{
-		GlobalVariables.flowCompletionTimesTla.Add (fTime);
-	}
-}
 
