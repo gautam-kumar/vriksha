@@ -35,7 +35,8 @@
 #include "ns3/priority-queue.h"
 #include "ns3/point-to-point-layout-module.h"
 #include "ns3/seq-ts-header.h"
-
+//#include "ns3/random-variable.h"
+//#include "ns3/random-variable-stream.h"
 
 #define LINKS 13
 #define NODES 12
@@ -384,7 +385,7 @@ int main (int argc, char *argv[])
   Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1400 - 42)); // <G> 42 = Header Size IP 
   
   PointToPointHelper pointToPoint;
-  pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000), "EcnThreshold", DoubleValue(0.025));
+  pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000), "EcnThreshold", DoubleValue(6.0/70.0));
   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Gbps"));
   pointToPoint.SetChannelAttribute ("Delay", StringValue (".020ms"));
   pointToPoint.SetDeviceAttribute("Mtu", UintegerValue(1500));

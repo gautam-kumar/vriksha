@@ -137,13 +137,13 @@ RedTest::GetPacketsSent()
 static void
 CwndChange (std::string context, uint32_t oldCwnd, uint32_t newCwnd)
 {
-  NS_LOG_UNCOND(context << "CwndChange: " << Simulator::Now().GetSeconds() << "\t" << newCwnd);
+//  NS_LOG_UNCOND(context << "CwndChange: " << Simulator::Now().GetSeconds() << "\t" << newCwnd);
 }
 
 static void
 QueueOccupancyChange(uint32_t oldQOcc, uint32_t newQOcc) 
 {
-  NS_LOG_UNCOND("QueueChange: " << Simulator::Now().GetSeconds() << "\t" << newQOcc);
+//  NS_LOG_UNCOND("QueueChange: " << Simulator::Now().GetSeconds() << "\t" << newQOcc);
 }
 
 
@@ -152,15 +152,22 @@ main (int argc, char *argv[])
 {
   NS_LOG_INFO("Creating nodes.");
   NodeContainer nodes;
+  
+  
   nodes.Create(4);
 
+
+
+  //LogComponentEnable("PacketSink", LOG_LEVEL_INFO);
+  LogComponentEnable("TcpNewReno", LOG_LEVEL_INFO);
+  LogComponentEnable("TcpSocketBase", LOG_LEVEL_INFO);
   Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::TcpNewReno"));
   Config::SetDefault("ns3::TcpSocket::SegmentSize", UintegerValue(1400 - 42)); // <G> 42 = Header size.
-
+  Config::SetDefault("ns3::TcpSocket::SndBufSize", UintegerValue(2048000000));
+  Config::SetDefault("ns3::TcpSocket::RcvBufSize", UintegerValue(2408000000));
   //Ptr<RateErrorModel> em = CreateObject<RateErrorModel>();
   //em->SetAttribute("ErrorRate", DoubleValue(0.00001));
   //devices.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (em));
-
   // Install network stacks on the nodes
   InternetStackHelper stack;
   stack.Install(nodes);
@@ -177,8 +184,8 @@ main (int argc, char *argv[])
   pointToPoint.SetDeviceAttribute("DataRate", StringValue("1024Mbps"));
   pointToPoint.SetChannelAttribute("Delay", StringValue("0.250ms"));
   pointToPoint.SetDeviceAttribute("Mtu", UintegerValue(1500));
-  //pointToPoint.SetQueue("ns3::DropTailQueueNotifier", "MaxBytes", UintegerValue(50000));
-  pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000));
+  pointToPoint.SetQueue("ns3::DropTailQueueNotifier", "MaxBytes", UintegerValue(50000));
+  //pointToPoint.SetQueue("ns3::EcnQueue", "MaxBytes", UintegerValue(700000));
   std::vector<NetDeviceContainer> deviceAdjacencyList(3);
   Ptr<PointToPointNetDevice> interestedNetDevice;
   for (uint32_t i = 0; i < deviceAdjacencyList.size(); i++) {
@@ -204,21 +211,21 @@ main (int argc, char *argv[])
   PacketSinkHelper packetSinkHelper1("ns3::TcpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), 8081));
   ApplicationContainer sinkApps0 = packetSinkHelper0.Install(nodes.Get(3));
   sinkApps0.Start(Seconds(0.));
-  sinkApps0.Stop(Seconds(2.2));
+  sinkApps0.Stop(Seconds(9.2));
   ApplicationContainer sinkApps1 = packetSinkHelper1.Install(nodes.Get(3));
   sinkApps1.Start(Seconds(0.));
-  sinkApps1.Stop(Seconds(2.2));
+  sinkApps1.Stop(Seconds(9.2));
 
   Ptr<RedTest> app0 = CreateObject<RedTest>();
   Ptr<Socket> ns3TcpSocket0 = Socket::CreateSocket(nodes.Get(0), TcpSocketFactory::GetTypeId());
   ns3TcpSocket0->TraceConnect("CongestionWindow", "Socket0: ", MakeCallback(&CwndChange));
   Address sinkAddress0(InetSocketAddress(interfaceAdjacencyList[2].GetAddress(1), 8080));
-  app0->Setup(ns3TcpSocket0, sinkAddress0, 1040, 1000, DataRate("1024Mbps"));
+  app0->Setup(ns3TcpSocket0, sinkAddress0, 1040000, 1, DataRate("1024Mbps"));
   nodes.Get(0)->AddApplication(app0);
   app0->SetStartTime(Seconds(1.));
-  app0->SetStopTime(Seconds(2.));
-
- /* Ptr<RedTest> app1 = CreateObject<RedTest>();
+  app0->SetStopTime(Seconds(10.));
+/*
+  Ptr<RedTest> app1 = CreateObject<RedTest>();
   Ptr<Socket> ns3TcpSocket1 = Socket::CreateSocket(nodes.Get(1), TcpSocketFactory::GetTypeId());
   ns3TcpSocket1->TraceConnect("CongestionWindow", "Socket1: ", MakeCallback(&CwndChange));
   Address sinkAddress1(InetSocketAddress(interfaceAdjacencyList[2].GetAddress(1), 8081));

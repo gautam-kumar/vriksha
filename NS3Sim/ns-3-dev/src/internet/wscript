@@ -136,6 +136,7 @@ def build(bld):
         #'model/tcp-rfc793.cc',
         #'model/tcp-tahoe.cc',
         #'model/tcp-reno.cc',
+        'model/dctcp.cc',
         'model/tcp-newreno.cc',
         'model/tcp-rx-buffer.cc',
         'model/tcp-d2.cc',

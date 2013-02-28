@@ -129,7 +129,8 @@ uint32_t
 DcTcp::Window (void)
 {
   NS_LOG_FUNCTION (this);
-  return std::min (m_rWnd.Get (), m_cWnd.Get ());
+  //return std::min (m_rWnd.Get (), m_cWnd.Get ());
+  return m_cWnd.Get();
 }
 
 Ptr<TcpSocketBase>

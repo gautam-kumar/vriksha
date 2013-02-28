@@ -105,8 +105,9 @@ TcpNewReno::Connect (const Address & address)
 uint32_t
 TcpNewReno::Window (void)
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION (this << m_rWnd.Get());
   return std::min (m_rWnd.Get (), m_cWnd.Get ());
+  //return m_cWnd.Get();
 }
 
 Ptr<TcpSocketBase>
