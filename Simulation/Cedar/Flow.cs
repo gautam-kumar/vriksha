@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,17 +12,17 @@ public class Flow
 	static int nextFlowId = 0;
 	public Task task;
 	public double sizeBytes;
-	public double deadlineSec;
+	public TimeSpan deadlineSec;
 	public int flowId;
 	public double informationContent; // between 0 and 1 relative to maximum
 	// can change as flow is executed
-	public double beginSec,
+	public TimeSpan beginSec,
 		endSec;
 	public double remainingBytes;
 
-	private Flow (Task task, double sizeBytes, double deadlineSec, double informationContent)
+	private Flow (Task task, double sizeBytes, TimeSpan deadlineSec, double informationContent)
 	{
-		this.beginSec = GlobalVariables.currentTimeSec;
+		this.beginSec = GlobalVariables.currentTime;
 		this.task = task;
 		this.sizeBytes = sizeBytes;
 		this.remainingBytes = sizeBytes;
@@ -32,15 +32,20 @@ public class Flow
 	}
 
 	// Estimate the end time of the flow given a rate.
+	// TODO TimeSpan breaks this
+	/*
 	public double estimateEndTime (double rateBps)
 	{
 		Debug.Assert (rateBps > 0);
-		double estimatedEndTime = GlobalVariables.currentTimeSec + (remainingBytes * 8.0 / rateBps);
+		double estimatedEndTime = GlobalVariables.currentTime + (remainingBytes * 8.0 / rateBps);
 		return estimatedEndTime;
 	}
+	*/
 
 
 	// return value indicates successful advance
+	// TODO TimeSpan breaks this
+	/*
 	public double AdvanceBy (double intervalSec, double rateBps)
 	{
 		double temp = remainingBytes;
@@ -49,7 +54,7 @@ public class Flow
 
 		if (remainingBytes < 1) { // this is to protect against FPU round off problems
 			remainingBytes = 0;
-			endSec = GlobalVariables.currentTimeSec + intervalSec;
+			endSec = GlobalVariables.currentTime + intervalSec;
 			return temp;
 		}
 
@@ -64,7 +69,7 @@ public class Flow
 		}
 		return false;
 	}
-
+	
 	public override string ToString ()
 	{
 		return "F " + task.requestId + ": "
@@ -83,30 +88,20 @@ public class Flow
 
 	public double EstimateRequiredRateBps ()
 	{
-		return remainingBytes * 8.0 / (deadlineSec - GlobalVariables.currentTimeSec);
+		return remainingBytes * 8.0 / (deadlineSec - GlobalVariables.currentTime);
 	}
 
+	*/
 	public static Flow CreateNewFlow (Task task, double ic)
 	{
-		double deadline = GlobalVariables.workerMlaFlowDeadlineSec;
-		switch (task.taskType) {
-		case TaskType.WorkerTask:
-			deadline = GlobalVariables.workerMlaFlowDeadlineSec;
-			break;
-		case TaskType.MlaTask:
-			deadline = GlobalVariables.mlaTlaFlowDeadlineSec;
-			break;
-		default:
-			break;
-		}
-
 		Flow f = new Flow (task,
                             GlobalVariables.rnd.pickRandomDouble (GlobalVariables.flowSizeMinBytes, GlobalVariables.flowSizeMaxBytes), // Flow Size
                 // TODO: Deadline
                 // GlobalVariables.currentTimeSec + (0.002 + GlobalVariables.rnd.GetExponentialSample(GlobalVariables.firstDeadline)),
-                            GlobalVariables.currentTimeSec + deadline,
+                            new TimeSpan(0),
                             ic);
 		return f;
 	}
+
                             
 }

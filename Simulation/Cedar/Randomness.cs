@@ -133,4 +133,63 @@ public class Randomness
 
 		return retval;
 	}
+
+	public static double GetExponentialCdf (double t, double mean)
+	{
+		return 1 - Math.Exp (-1.0 * t / mean);
+	}
+
+	public static double FacebookCdf (double x)
+	{
+		return GetStandardNormalCdf ((Math.Log (x) - 4.4) / 1.15);
+	}
+	
+	public static double GoogleCdf (double x)
+	{
+		return GetStandardNormalCdf ((Math.Log (x) - 2.94) / 0.55);
+	}
+	
+	public static double GetLogNormalCdf (double x, double mean, double sigma)
+	{
+		return GetStandardNormalCdf ((Math.Log (x) - mean) / sigma);
+	}
+	
+	public static double GetNormalCdf (double x, double mean, double sigma)
+	{
+		return GetStandardNormalCdf ((x - mean) / sigma);
+	}
+
+	public static double GetCdf ( double time, DistType type, double mu, double sigma) 
+	{
+		switch (type) {
+		case DistType.Normal:
+			return GetNormalCdf (time, mu, sigma);
+		case DistType.Exponential:
+			return GetExponentialCdf (time, mu);
+		default: // Treated as Log Normal
+			return GetLogNormalCdf (time, mu, sigma);
+		}
+	}
+	
+	public static double GetStandardNormalCdf (double x)
+	{
+		double a1 = 0.254829592;
+		double a2 = -0.284496736;
+		double a3 = 1.421413741;
+		double a4 = -1.453152027;
+		double a5 = 1.061405429;
+		double p = 0.3275911;
+		
+		// Save the sign of x
+		double sign = 1;
+		if (x < 0)
+			sign = -1;
+		x = Math.Abs (x) / Math.Sqrt (2.0);
+		
+		// A&S formula 7.1.26
+		double t = 1.0 / (1.0 + p * x);
+		double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp (-x * x);
+		
+		return 0.5 * (1.0 + sign * y);
+	}
 }

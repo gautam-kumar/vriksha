@@ -8,16 +8,18 @@ public class GlobalVariables
 {
 
 	public static HLA hla;
+	public static List<SMLA> smlas;
 	public static List<MLA> mlas;
 	public static List<Worker> workers;
-	public static Dictionary<int, double> waitTimeGlobal = new Dictionary<int,double> ();
-	//public static Dictionary<int, List<double>> optimalWaitTime = new Dictionary<int, List<double>>();
+//	public static Dictionary<int, double> waitTimeGlobal = new Dictionary<int,double> ();
 	public static Dictionary<int, List<Task>> secondStageTasks = new Dictionary<int, List<Task>> ();
-	public static Dictionary<int, List<double>> optimalWaitTimes = new Dictionary<int, List<double>> ();
+	public static Dictionary<int, List<Task>> thirdStageTasks = new Dictionary<int, List<Task>> ();
 
+	// TODO Removed for the Ideal
+	/*
 	public static void UpdateGlobalWaitTime (int id)
 	{
-		double sum = 0;
+		TimeSpan sum = 0;
 		foreach (MLA mla in mlas) {
 			if (mla.waitTime.ContainsKey (id)) {
 				sum += mla.waitTime [id];
@@ -30,14 +32,14 @@ public class GlobalVariables
 		} else {
 			waitTimeGlobal.Add (id, sum / mlas.Count);
 		}
-	}
+	}*/
 
 	public static List<Request> requests;
 	public static List<double> flowCompletionTimesMla;
 	public static List<double> flowCompletionTimesTla;
 
 	// Initialization Variables
-	public static double currentTimeSec = 0;
+	public static TimeSpan currentTime = new TimeSpan(0);
 	public static int numFlowsMissed = 0;
 
 
@@ -47,13 +49,14 @@ public class GlobalVariables
 	// Request parameters
 	public static int NumRequestsToSimulate = 1;
 	public static int NumEdgeRequestsToDelete = 0;
-	public static double timeIncrementSec = 0.001;
-	public static double requestGenerationIntervalSec = 0.01; // TODO: 1 every 5 ms?
+	public static TimeSpan timeIncrement = new TimeSpan (0, 0, 0, 0, 1);
 
 	// Topology and machine parameters
 	public static int NumWorkerPerMla = 40;
-	public static int NumMlaPerTla = 40;
-	public static int NumWorkers = 1600;
+	public static int NumSmlaPerTla = 10;
+	public static int NumMlaPerSmla = 10;
+	public static int NumMlas = 10;
+	public static int NumWorkers = 4000;
 	public static int NumQueuesInWorker = 30;
 	public static int NumQueuesInMla = 30;
 
@@ -62,33 +65,32 @@ public class GlobalVariables
 	public static double flowSizeBytes = 50000;
 	public static double flowSizeMinBytes = 10;
 	public static double flowSizeMaxBytes = 10;
-	public static double workerMlaFlowDeadlineSec = 0.019;
-	public static double mlaTlaFlowDeadlineSec = 0.015;
 
 
 	// Processing distributions type
 	public static DistType workerDistType = DistType.LogNormal;
 	public static DistType mlaDistType = DistType.LogNormal;
 	// Worker
-	public static double workerComputationTimeMeanSec = 0.100; // TODO: Fix!! Assume 10 threads at Workers
-	public static double workerComputationTimeStdevSec = 0.01;
-	public static double workerComputationTimeSigmaSecPerRequest = 0.01;
-	public static double workerComputationTimeMaxPerRequest = 5;
+	public static double workerComputationTimeMeanMs = 100; // TODO: Fix!! Assume 10 threads at Workers
+	public static double workerComputationTimeStdevMs = 10;
+	public static double workerComputationTimeSigmaPerRequestMs = 10;
+	public static double workerComputationTimeMaxPerRequest = 5000;
 	public static double workerLogNormalTimeMean = 2.94;
 	public static double workerLogNormalTimeSigma = 0.55;
 	// MLA
-	public static double mlaComputationTimeMeanSec = 0.100; // TODO: Fix!! Assume 20 threads at MLA
-	public static double mlaComputationTimeStdevSec = 0.01;
-	public static double mlaComputationTimeSigmaSecPerRequest = 0.02;
-	public static double mlaComputationTimeMaxPerRequest = 5;
+	public static double mlaComputationTimeMeanMs = 100; // TODO: Fix!! Assume 20 threads at MLA
+	public static double mlaComputationTimeStdevMs = 10;
+	public static double mlaComputationTimeSigmaPerRequestMs = 20;
+	public static double mlaComputationTimeMaxPerRequest = 5000;
 	public static double mlaLogNormalTimeMean = 2.94;
 	public static double mlaLogNormalTimeSigma = 0.55;
 
 	// Wait times
 	// Wait times before sending partial responses; Set to very high value if 
 	// wait for all responses
-	public static double mlaWaitTimeSec = .06;
-	public static double tlaWaitTimeSec = .90;
+	public static TimeSpan mlaWaitTimeSec;
+	public static TimeSpan smlaWaitTimeSec;
+	public static TimeSpan tlaWaitTimeSec;
 
 
 	// Misc
@@ -99,7 +101,7 @@ public class GlobalVariables
 
 	public static void init (int seed)
 	{
-		currentTimeSec = 0.0001;
+		currentTime = new TimeSpan(0, 0, 0, 0, 1);
 		requests = new List<Request> ();
 		flowCompletionTimesMla = new List<double> ();
 		flowCompletionTimesTla = new List<double> ();
@@ -128,27 +130,6 @@ public class GlobalVariables
             */
 	}
         
-	public static double GetWaitTime (double w, double m)
-	{
-		return GlobalVariables.tlaWaitTimeSec / 2;
-		/*
-            int wInt = (int) (w * 1000.0);
-            int mInt = (int) (m * 1000.0);
-            int wTR = (int) (Math.Round(wInt / 5.0) * 5);
-            int mTR = (int) (Math.Round(mInt / 10.0) * 10);
-            if (wTR <= 30) wTR = 30;
-            if (wTR >= 70) wTR = 70;
-            if (mTR <= 60) mTR = 60;
-            if (mTR >= 140) mTR = 140;
-            Tuple<int, int> t = new Tuple<int, int>(wTR, mTR);
-            if (!computeToWaitTime.ContainsKey(t))
-            {
-                Console.Out.WriteLine("Key Problem" +
-                    t.Item1 + " " + t.Item2);
-            }
-            return 0.101 * 0.001 * computeToWaitTime[t];
-            */
-	}
 
 	static List<double> rttMeasurements;
 	static Random rttRandom;
@@ -198,185 +179,22 @@ public class GlobalVariables
 		}
 	}
 
-	public static double GetFacebookSample (int jobId)
+	public static double GetFacebookSampleMs (int jobId)
 	{
 		jobId = jobId % taskPerJob.Keys.Count;
 		//jobId += 400;
 		int i = facebookRandom.Next (taskPerJob [jobId].Count);
-		return 0.001 * taskPerJob [jobId] [i];
+		return taskPerJob [jobId] [i];
 	}
 
 	public static double facebookLogNormalMean = 4.4;
 	public static double facebookLogNormalSigma = 1.15;
 	public static double optimalWaitTime = 0;
 
-	public static double FacebookCdf (double x)
-	{
-		return GetStandardNormalCdf ((Math.Log (x) - 4.4) / 1.15);
-	}
 
-	public static double GoogleCdf (double x)
-	{
-		return GetStandardNormalCdf ((Math.Log (x) - 2.94) / 0.55);
-	}
 
-	public static double GetLogNormalCdf (double x, double mean, double sigma)
-	{
-		return GetStandardNormalCdf ((Math.Log (x) - mean) / sigma);
-	}
 
-	public static double GetNormalCdf (double x, double mean, double sigma)
-	{
-		return GetStandardNormalCdf ((x - mean) / sigma);
-	}
 
-	public static double GetStandardNormalCdf (double x)
-	{
-		double a1 = 0.254829592;
-		double a2 = -0.284496736;
-		double a3 = 1.421413741;
-		double a4 = -1.453152027;
-		double a5 = 1.061405429;
-		double p = 0.3275911;
-
-		// Save the sign of x
-		double sign = 1;
-		if (x < 0)
-			sign = -1;
-		x = Math.Abs (x) / Math.Sqrt (2.0);
-
-		// A&S formula 7.1.26
-		double t = 1.0 / (1.0 + p * x);
-		double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp (-x * x);
-
-		return 0.5 * (1.0 + sign * y);
-	}
-
-	public static double GetOptimalWaitTimeNormal (
-            double mean1, double sigma1, double mean2, double sigma2)
-	{
-		double deadline = GlobalVariables.tlaWaitTimeSec;
-		double k = NumWorkerPerMla;
-		double time = 0.0001;
-		double utility = 0.0;
-		double maxUtility = 0;
-		double maxTime = 0;
-		double increment = 0.001;
-		while (time < deadline) {
-			double gain = (GlobalVariables.GetNormalCdf (time + increment,
-                    mean1, sigma1)
-				- GlobalVariables.GetNormalCdf (time, mean1, sigma1))
-				* GlobalVariables.GetNormalCdf (deadline - time - increment, mean2, sigma2);
-			double loss = (GlobalVariables.GetNormalCdf (time, mean1, sigma1)
-				- Math.Pow (GlobalVariables.GetNormalCdf (time, mean1, sigma1), k))
-				* (GlobalVariables.GetNormalCdf (deadline - time, mean2, sigma2) - GlobalVariables.GetNormalCdf (deadline - time - increment, mean2, sigma2));
-			utility += gain - loss;
-			if (utility > maxUtility) {
-				maxUtility = utility;
-				maxTime = time;
-			}
-			time += increment;
-		}
-		//Console.Error.WriteLine("MaxUtility: " + maxUtility);
-		//Console.Error.WriteLine("MaxTime: " + maxTime);
-		return maxTime;
-	}
-
-	public static double GetOptimalWaitTimeFacebookGoogle (
-            double mean, double sigma)
-	{
-		double deadline = GlobalVariables.tlaWaitTimeSec * 1000.0;
-		double k = NumWorkerPerMla;
-		double time = 1.0;
-		double utility = 0.0;
-		double maxUtility = 0;
-		double maxTime = 0;
-		double increment = 1.0;
-		while (time < deadline) {
-			double gain = (GlobalVariables.GetLogNormalCdf (time + increment, 
-                    mean, sigma)
-				- GlobalVariables.GetLogNormalCdf (time, mean, sigma))
-				* GlobalVariables.GoogleCdf (deadline - time - increment);
-			double loss = (GlobalVariables.GetLogNormalCdf (time, mean, sigma)
-				- Math.Pow (GlobalVariables.GetLogNormalCdf (time, mean, sigma), k))
-				* (GlobalVariables.GoogleCdf (deadline - time) - GlobalVariables.GoogleCdf (deadline - time - increment));
-			utility += gain - loss;
-			if (utility > maxUtility) {
-				maxUtility = utility;
-				maxTime = time;
-			}
-			time += increment;
-		}
-		//Console.Error.WriteLine("MaxUtility: " + maxUtility);
-		//Console.Error.WriteLine("MaxTime: " + maxTime);
-		return maxTime;
-	}
-
-	public static double GetOptimalWaitTimeLogNormal (
-            double mean1, double sigma1,
-            double mean2, double sigma2)
-	{
-		double deadline = GlobalVariables.tlaWaitTimeSec * 1000.0;
-		double k = NumWorkerPerMla;
-		double time = 0.001;
-		double utility = 0.0;
-		double maxUtility = 0;
-		double maxTime = 0;
-		double increment = 1;
-		while (time < deadline) {
-			double gain = (GlobalVariables.GetLogNormalCdf (time + increment,
-                    mean1, sigma1)
-				- GlobalVariables.GetLogNormalCdf (time, mean1, sigma1))
-				* GlobalVariables.GetLogNormalCdf (deadline - time - increment, mean2, sigma2);
-			double loss = (GlobalVariables.GetLogNormalCdf (time, mean1, sigma1)
-				- Math.Pow (GlobalVariables.GetLogNormalCdf (time, mean1, sigma1), k))
-				* (GlobalVariables.GetLogNormalCdf (deadline - time, mean2, sigma2) - GlobalVariables.GetLogNormalCdf (deadline - time - increment, mean2, sigma2));
-			utility += gain - loss;
-			if (utility > maxUtility) {
-				maxUtility = utility;
-				maxTime = time;
-			}
-			time += increment;
-		}
-		//Console.Error.WriteLine("MaxUtility: " + maxUtility);
-		//Console.Error.WriteLine("MaxTime: " + maxTime);
-		return maxTime;
-	}
-
-	public static double GetExponentialCdf (double t, double mean)
-	{
-		return 1 - Math.Exp (-1.0 * t / mean);
-	}
-
-	public static double GetOptimalWaitTimeExponential (
-            double mean1, double mean2)
-	{
-		double deadline = GlobalVariables.tlaWaitTimeSec;
-		double k = NumWorkerPerMla;
-		double time = 0.0001;
-		double utility = 0.0;
-		double maxUtility = 0;
-		double maxTime = 0;
-		double increment = 0.001;
-		while (time < deadline) {
-			double gain = (GlobalVariables.GetExponentialCdf (time + increment,
-                    mean1)
-				- GlobalVariables.GetExponentialCdf (time, mean1))
-				* GlobalVariables.GetExponentialCdf (deadline - time - increment, mean2);
-			double loss = (GlobalVariables.GetExponentialCdf (time, mean1)
-				- Math.Pow (GlobalVariables.GetExponentialCdf (time, mean1), k))
-				* (GlobalVariables.GetExponentialCdf (deadline - time, mean2) - GlobalVariables.GetExponentialCdf (deadline - time - increment, mean2));
-			utility += gain - loss;
-			if (utility > maxUtility) {
-				maxUtility = utility;
-				maxTime = time;
-			}
-			time += increment;
-		}
-		//Console.Error.WriteLine("MaxUtility: " + maxUtility);
-		//Console.Error.WriteLine("MaxTime: " + maxTime);
-		return maxTime;
-	}
 
 	public static Dictionary<int, double> orderStats;
 
