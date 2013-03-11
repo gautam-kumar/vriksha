@@ -62,6 +62,9 @@ public class MLA : Machine
 {
 	public int id;
 	public Machine hla;
+	public int layer;
+	public int fanout;
+	public TimeSpan defaultWaitTime;
 	public Dictionary<int, int> numFlowsPerRequest;
 	public Dictionary<int, TimeSpan> firstFlowArrivalTimePerRequest;
 	public Dictionary<int, bool> isRequestProcessed;
@@ -71,9 +74,12 @@ public class MLA : Machine
 	public Dictionary<int, TimeSpan> waitTime;
 	public Dictionary<int, TimeSpan> prevFlowArrivalTime;
 
-	public MLA (int id, int numQueues, Machine tla) : base()
+	public MLA (int id, int layer, TimeSpan defaultWaitTime, int fanout, Machine tla) : base()
 	{
 		this.id = id;
+		this.layer = layer;
+		this.defaultWaitTime = defaultWaitTime;
+		this.fanout = fanout;
 		this.hla = tla;
 		numFlowsPerRequest = new Dictionary<int, int> ();
 		firstFlowArrivalTimePerRequest = new Dictionary<int, TimeSpan> ();
@@ -104,7 +110,6 @@ public class MLA : Machine
 			informationContentPerRequest.Add (requestId, f.informationContent);
 			meanEstimate.Add (requestId, GlobalVariables.facebookLogNormalMean);
 			sigmaEstimate.Add (requestId, GlobalVariables.facebookLogNormalSigma);
-			waitTime.Add (requestId, GlobalVariables.mlaWaitTimeSec);
 			prevFlowArrivalTime.Add (requestId, GlobalVariables.currentTime);
 		}
 	}
@@ -116,15 +121,16 @@ public class MLA : Machine
 		foreach (KeyValuePair<int, TimeSpan> req in firstFlowArrivalTimePerRequest) { 
 			// If time expired, send partial results, or if all flows received
 			TimeSpan beginTime = GlobalVariables.requests[req.Key].beginSec;
-			TimeSpan w = GlobalVariables.mlaWaitTimeSec;
+			TimeSpan w = defaultWaitTime;
 			//Console.Error.WriteLine(GlobalVariables.currentTime + ": " + (beginTime + w));
 			if ((GlobalVariables.currentTime >= beginTime + w)
-				|| (numFlowsPerRequest [req.Key] == GlobalVariables.NumWorkerPerMla)) {
+				|| (numFlowsPerRequest [req.Key] == fanout)) {
 				//GlobalVariables.
 				//Console.Error.WriteLine("Timed out: " + w);
 				//Console.Error.WriteLine(GlobalVariables.currentTime + ": MLA adding task");
 				GlobalVariables.requests [req.Key].numFlowsCompleted += numFlowsPerRequest [req.Key];
-				InsertTask (GlobalVariables.secondStageTasks [req.Key] [id]);
+				//Console.Error.WriteLine(layer + " " + req.Key + " " + id);
+				InsertTask (GlobalVariables.mlaTasks[layer][req.Key][id]);
 				toRemove.Add (req.Key);
 				isRequestProcessed [req.Key] = true;
 			}
@@ -149,102 +155,6 @@ public class MLA : Machine
 		}
 	}
 
-}
-
-
-
-public class SMLA : Machine
-{
-	public int id;
-	public Machine hla;
-	public Dictionary<int, int> numFlowsPerRequest;
-	public Dictionary<int, bool> isRequestProcessed;
-	public Dictionary<int, double> informationContentPerRequest;
-	public Dictionary<int, double> meanEstimate;
-	public Dictionary<int, double> sigmaEstimate;
-	public Dictionary<int, TimeSpan> waitTime;
-	public Dictionary<int, TimeSpan> firstFlowArrivalTimePerRequest;
-	public Dictionary<int, TimeSpan> prevFlowArrivalTime;
-	
-	public SMLA (int id, int numQueues, Machine tla) : base()
-	{
-		this.id = id;
-		this.hla = tla;
-		numFlowsPerRequest = new Dictionary<int, int> ();
-		firstFlowArrivalTimePerRequest = new Dictionary<int, TimeSpan> ();
-		isRequestProcessed = new Dictionary<int, bool> ();
-		informationContentPerRequest = new Dictionary<int, double> ();
-		meanEstimate = new Dictionary<int, double> ();
-		sigmaEstimate = new Dictionary<int, double> ();
-		waitTime = new Dictionary<int, TimeSpan> ();
-		prevFlowArrivalTime = new Dictionary<int,TimeSpan> ();
-	}
-	
-	public override void InsertFlow (Flow f)
-	{
-		
-		//Console.WriteLine("Adding f");
-		int requestId = f.task.requestId;
-		// If this is a flow coming in late, ignore
-		if (isRequestProcessed.ContainsKey (requestId)) {
-			return;
-		}
-
-		if (numFlowsPerRequest.ContainsKey (requestId)) {
-			numFlowsPerRequest [requestId] += 1;
-			informationContentPerRequest [requestId] += f.informationContent;
-			
-			//Console.Error.WriteLine("{0} New Flow: {1} {2}", requestId, numFlowsPerRequest[requestId], GlobalVariables.currentTimeSec);
-		} else {   // first flow
-			numFlowsPerRequest.Add (requestId, 1); 
-
-			firstFlowArrivalTimePerRequest.Add (requestId, GlobalVariables.currentTime);
-			informationContentPerRequest.Add (requestId, f.informationContent);
-			meanEstimate.Add (requestId, GlobalVariables.facebookLogNormalMean);
-			sigmaEstimate.Add (requestId, GlobalVariables.facebookLogNormalSigma);
-			waitTime.Add (requestId, GlobalVariables.mlaWaitTimeSec);
-			prevFlowArrivalTime.Add (requestId, GlobalVariables.currentTime);
-		}
-	}
-	
-	public override void AdvanceTime (TimeSpan timeToSimulate)
-	{
-		List<int> toRemove = new List<int> ();
-		// First check if some new task needs to be added
-		foreach (KeyValuePair<int, TimeSpan> req in firstFlowArrivalTimePerRequest) { 
-			// If time expired, send partial results, or if all flows received
-			TimeSpan beginTime = GlobalVariables.requests [req.Key].beginSec;
-		
-			TimeSpan w = GlobalVariables.smlaWaitTimeSec;
-			if ((GlobalVariables.currentTime >= beginTime + w)
-			    || (numFlowsPerRequest [req.Key] == GlobalVariables.NumMlaPerSmla)) {
-
-				//GlobalVariables.
-				//Console.Error.WriteLine("Timed out: " + w);
-				GlobalVariables.requests [req.Key].numFlowsCompleted += numFlowsPerRequest [req.Key];
-				InsertTask (GlobalVariables.thirdStageTasks [req.Key] [id]);
-				toRemove.Add (req.Key);
-				isRequestProcessed [req.Key] = true;
-			}
-		}
-		foreach (int i in toRemove) {
-			numFlowsPerRequest.Remove (i);
-			firstFlowArrivalTimePerRequest.Remove (i);
-		}
-		
-		List<Task> finished = new List<Task> ();
-		foreach (Task t in tasksToSchedule) {
-			t.progressSec += timeToSimulate;
-			if (t.progressSec >= t.processingTimeSec) {
-				hla.InsertFlow (Flow.CreateNewFlow (t, 
-				                                    informationContentPerRequest [t.requestId]));
-				finished.Add (t);
-			}
-		}
-		foreach (Task t in finished) {
-			tasksToSchedule.Remove (t);
-		}
-	}
 }
 
 
@@ -294,10 +204,10 @@ public class HLA : Machine
 		foreach (KeyValuePair<int, double> req in firstFlowArrivalTimePerRequest) {
 			// If time expired, send partial results, or if all flows received
 			TimeSpan beginTime = GlobalVariables.requests [req.Key].beginSec;
-			if ((GlobalVariables.currentTime >= beginTime + GlobalVariables.tlaWaitTimeSec)
-			    || (numFlowsPerRequest [req.Key] == GlobalVariables.NumSmlaPerTla)) {
+			if ((GlobalVariables.currentTime >= beginTime + GlobalVariables.tlaWaitTime)
+			    || (numFlowsPerRequest [req.Key] == GlobalVariables.Fanouts[0])) {
 				GlobalVariables.requests [req.Key].numFlowsCompleted += numFlowsPerRequest [req.Key];
-				if (GlobalVariables.currentTime <= beginTime + GlobalVariables.tlaWaitTimeSec + GlobalVariables.timeIncrement) {
+				if (GlobalVariables.currentTime <= beginTime + GlobalVariables.tlaWaitTime + GlobalVariables.timeIncrement) {
 					InsertTask (Task.CreateNewTask (req.Key, TaskType.TlaTask));
 				}
 				toRemove.Add (req.Key);

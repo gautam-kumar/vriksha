@@ -11,12 +11,14 @@ class FacebookGoogle
 	{
 		int[] T = new int[1] {50};
 		foreach (int t in T) {
-			int [] deadline = new int[6] {140, 145, 150, 155, 160, 165}; //0.195, 0.19, 0.20, 0.21, 0.22};
-			foreach (int d in deadline) {
-				
-				GlobalVariables.tlaWaitTimeSec = new TimeSpan(0, 0, 0, 0, d + 30);
-				Console.Error.WriteLine ("Deadline is : " + GlobalVariables.tlaWaitTimeSec);
-				SetupParameters(t); 
+			int startDeadline = 260;
+			int numDeadlines = 1;
+			int increment = 5;//0.195, 0.19, 0.20, 0.21, 0.22};
+			for (int i = 0; i < numDeadlines; i++) {
+				int d = startDeadline + i * increment;
+				GlobalVariables.tlaWaitTime = new TimeSpan(0, 0, 0, 0, d);
+				Console.Error.WriteLine ("Deadline is : " + GlobalVariables.tlaWaitTime);
+				SetupParameters(t);
 				Simulate();
 				LogResults();
 			}
@@ -26,11 +28,8 @@ class FacebookGoogle
 	public static void SetupParameters(int fanout)
 	{
 		/* Set up Global parameters */
-		GlobalVariables.NumWorkerPerMla = 50;
-		GlobalVariables.NumMlaPerSmla = 10;
-		GlobalVariables.NumSmlaPerTla = 5;
-		GlobalVariables.NumMlas = 50;
-		GlobalVariables.NumWorkers = 2500;
+		GlobalVariables.Fanouts = new int[4] {1, 25, 50};
+		GlobalVariables.NumWorkers = 50;
 
 		Console.Error.WriteLine ("Topology: " + fanout);
 		GlobalVariables.ReadDcTcpNumbers ();
@@ -43,55 +42,85 @@ class FacebookGoogle
 
 		
 		//GlobalVariables.timeIncrementSec = 0.001;
-		GlobalVariables.NumRequestsToSimulate = 100;
-		
-		double mu = GlobalVariables.workerLogNormalTimeMean;
-		double g = GlobalVariables.workerLogNormalTimeSigma;
-		//double a = Math.Exp (mu + g * g / 2);
-		mu = GlobalVariables.mlaLogNormalTimeMean;
-		g = GlobalVariables.mlaLogNormalTimeSigma;
-		//double b = Math.Exp (mu + g * g / 2);
-		//double tmp = 0;
-		//tmp = 0.001 * GlobalVariables.GetOptimalWaitTimeLogNormal (GlobalVariables.workerLogNormalTimeMean, GlobalVariables.workerLogNormalTimeSigma,
-		//                                                           GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
-		//tmp = a / (a + 2 * b) * GlobalVariables.tlaWaitTimeSec;
+		GlobalVariables.NumRequestsToSimulate = 200;
 
+		TimeSpan waitTime1 = Algorithms.GetOptimalWaitTime4(GlobalVariables.tlaWaitTime, 
+		                                                    GlobalVariables.Fanouts[3], GlobalVariables.Fanouts[2], GlobalVariables.Fanouts[1],
+		                                                    DistType.LogNormal, GlobalVariables.workerLogNormalTimeMean, GlobalVariables.workerLogNormalTimeSigma,
+		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
+		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
+		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
+		Console.Error.WriteLine ("MLA OPT4 is: " + waitTime1);
+		TimeSpan waitTime2 = waitTime1 + Algorithms.GetOptimalWaitTime3(GlobalVariables.tlaWaitTime - waitTime1, 
+		                                                    GlobalVariables.Fanouts[2], GlobalVariables.Fanouts[1],
+		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
+		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
+		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
+		Console.Error.WriteLine ("MLA OPT3 is: " + waitTime2);
 
-		// TODO: Fix -- Mla Wait Time is OPT3, Smal is OPT but subtract time apportioned to MLA
-		TimeSpan mlaWaitTime = Algorithms.GetOptimalWaitTime3(GlobalVariables.tlaWaitTimeSec,
-		                                                       DistType.LogNormal, GlobalVariables.workerLogNormalTimeMean, GlobalVariables.workerLogNormalTimeSigma,
+		TimeSpan waitTime3 = waitTime2 + Algorithms.GetOptimalWaitTime2(GlobalVariables.tlaWaitTime - waitTime2,
+		                                                                            GlobalVariables.Fanouts[1],
 		                                                       DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
 		                                                       DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
-		TimeSpan smlaWaitTime = Algorithms.GetOptimalWaitTime2(GlobalVariables.tlaWaitTimeSec - mlaWaitTime, 
-		                                                       DistType.LogNormal, GlobalVariables.mlaWaitTimeSec, GlobalVariables.mlaWaitTimeSec,
-		                                                      DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
+		Console.Error.WriteLine ("MLA OPT2 is: " + waitTime3);
 
-		GlobalVariables.mlaWaitTimeSec = new TimeSpan(0, 0, 0, 0, (int) (158 * GlobalVariables.tlaWaitTimeSec.TotalMilliseconds / 200));
-			//(a) / (a + 2 * b) * GlobalVariables.tlaWaitTimeSec;;
-		GlobalVariables.smlaWaitTimeSec = new TimeSpan(0, 0, 0, 0, (int) (179 * GlobalVariables.tlaWaitTimeSec.TotalMilliseconds / 200));
-			//(a + b) / (a + 2 * b) * GlobalVariables.tlaWaitTimeSec;;
-		
+		GlobalVariables.mlaWaitTimes = new TimeSpan[GlobalVariables.Fanouts.Length - 1];
+		GlobalVariables.mlaWaitTimes[2] = 
+			//new TimeSpan(0, 0, 0, 0, (int) (158 * GlobalVariables.tlaWaitTime.TotalMilliseconds / 220));
+			new TimeSpan(0, 0, 0, 0, 140);
+			//waitTime1;
+		GlobalVariables.mlaWaitTimes[1] = 
+			//new TimeSpan(0, 0, 0, 0, (int) (179 * GlobalVariables.tlaWaitTime.TotalMilliseconds / 220));
+			new TimeSpan(0, 0, 0, 0, 180);
+			//waitTime2;
+		GlobalVariables.mlaWaitTimes [0] = 
+			//new TimeSpan(0, 0, 0, 0, (int) (200 * GlobalVariables.tlaWaitTime.TotalMilliseconds / 220));
+			new TimeSpan(0, 0, 0, 0, 220);
+			//waitTime3;
+
+
 		GlobalVariables.init (2000);
+
+
+
+
 		// Initialize System Components
 		GlobalVariables.hla = new HLA ();
-		GlobalVariables.smlas = new List<SMLA> ();
-		for (int i = 0; i < GlobalVariables.NumSmlaPerTla; i++) {
-			GlobalVariables.smlas.Add (new SMLA (i, GlobalVariables.NumQueuesInMla,
-			                                   GlobalVariables.hla));
+		int currentLevelNodes = 1;
+		GlobalVariables.mlas = new List<MLA>[GlobalVariables.Fanouts.Length - 1];
+		for (int i = 0; i < GlobalVariables.Fanouts.Length - 1; i++) {
+			currentLevelNodes *= GlobalVariables.Fanouts[i];
+			GlobalVariables.mlas[i] = new List<MLA> ();
+			for (int j = 0; j < currentLevelNodes; j++) {
+				Machine aggregator;
+				if (i == 0) {
+					aggregator = GlobalVariables.hla;
+				} else {
+					aggregator = GlobalVariables.mlas[i - 1][j / GlobalVariables.Fanouts[i]];
+				}
+				GlobalVariables.mlas[i].Add (new MLA (j, i, GlobalVariables.mlaWaitTimes[i],
+				                             GlobalVariables.Fanouts[i + 1], 
+			                                 aggregator));
+			}
 		}
 
-		GlobalVariables.mlas = new List<MLA> ();
-		for (int i = 0; i < GlobalVariables.NumMlas; i++) {
-			GlobalVariables.mlas.Add (new MLA (i, GlobalVariables.NumQueuesInMla,
-			                                  GlobalVariables.smlas[i / GlobalVariables.NumMlaPerSmla]
-			                                   ));
-		}
 		GlobalVariables.workers = new List<Worker> ();
 		for (int i = 0; i < GlobalVariables.NumWorkers; i++) {
+			int numWorkerPerAggregator = GlobalVariables.Fanouts[GlobalVariables.Fanouts.Length - 1];
+			int layer = GlobalVariables.Fanouts.Length - 2;
 			GlobalVariables.workers.Add (new Worker (GlobalVariables.NumQueuesInWorker,
-			                                         GlobalVariables.mlas [i / GlobalVariables.NumWorkerPerMla]));
+			                                         GlobalVariables.mlas[layer][i / numWorkerPerAggregator]));
 		}
-		
+
+
+		// Initialize the stage tasks
+		GlobalVariables.mlaTasks = new Dictionary<int, List<Task>>[GlobalVariables.Fanouts.Length - 1];
+		for (int i = 0; i < GlobalVariables.mlaTasks.Length; i++) {
+			GlobalVariables.mlaTasks [i] = new Dictionary<int, List<Task>> ();
+		}
+
+
+		// Insert the requests
 		int requestNumber = 0;
 		while (requestNumber < GlobalVariables.NumRequestsToSimulate) {
 			GlobalVariables.requests.Add (Request.GetNewRequest (requestNumber));
@@ -101,22 +130,17 @@ class FacebookGoogle
 				w.InsertTask (t);
 				durations.Add (t.processingTimeSec.TotalMilliseconds);
 			}
-			
-			GlobalVariables.secondStageTasks [requestNumber] = new List<Task> ();
-			//TODO: ReEnable for Ideal scheme computation: 
-			//GlobalVariables.optimalWaitTimes [requestNumber] = new List<double> ();
-			int index = 0;
-			foreach (MLA m in GlobalVariables.mlas) {
-				GlobalVariables.secondStageTasks [requestNumber].Add (Task.CreateNewTask (requestNumber, TaskType.MlaTask));
-				//TODO: ReEnable for Ideal scheme computation:
-				//GlobalVariables.optimalWaitTimes [requestNumber].Add (OptimalMLA.OptimalWaitTimeLogNormal (durations.GetRange (index, GlobalVariables.NumWorkerPerMla)));
-				index += GlobalVariables.NumWorkerPerMla;
+
+			// For each of the layers, initialize the tasks
+			int layer = 0;
+			foreach (List<MLA> mlas in GlobalVariables.mlas) {
+				GlobalVariables.mlaTasks[layer] [requestNumber] = new List<Task> ();
+				foreach (MLA m in mlas) {
+					GlobalVariables.mlaTasks[layer][requestNumber].Add (Task.CreateNewTask (requestNumber, TaskType.MlaTask));
+				}
+				layer += 1;
 			}
 
-			GlobalVariables.thirdStageTasks [requestNumber] = new List<Task> ();
-			foreach (SMLA s in GlobalVariables.smlas) {
-				GlobalVariables.thirdStageTasks [requestNumber].Add (Task.CreateNewTask (requestNumber, TaskType.MlaTask));
-			}
 			requestNumber += 1;
 		}
 	}
@@ -125,16 +149,15 @@ class FacebookGoogle
 
 	public static void Simulate() {
 		while (GlobalVariables.currentTime <= 
-		       GlobalVariables.tlaWaitTimeSec + GlobalVariables.timeIncrement.Add (GlobalVariables.timeIncrement)) { 
+		       GlobalVariables.tlaWaitTime + GlobalVariables.timeIncrement.Add (GlobalVariables.timeIncrement)) { 
 			//Console.Error.WriteLine(GlobalVariables.currentTime);
 			foreach (Worker w in GlobalVariables.workers) {
 				w.AdvanceTime (GlobalVariables.timeIncrement);
 			}
-			foreach (MLA m in GlobalVariables.mlas) {
-				m.AdvanceTime (GlobalVariables.timeIncrement);
-			}
-			foreach (SMLA s in GlobalVariables.smlas) {
-				s.AdvanceTime (GlobalVariables.timeIncrement);
+			for (int i = GlobalVariables.Fanouts.Length - 2; i >= 0; i--) {
+				foreach (MLA m in GlobalVariables.mlas[i]) {
+					m.AdvanceTime (GlobalVariables.timeIncrement);
+				}
 			}
 			GlobalVariables.hla.AdvanceTime (GlobalVariables.timeIncrement);
 			
@@ -226,8 +249,8 @@ class FacebookGoogle
 			}
 		}
 		
-		Console.Error.WriteLine (GlobalVariables.tlaWaitTimeSec + " " +
-		                         GlobalVariables.mlaWaitTimeSec +
+		Console.Error.WriteLine (GlobalVariables.tlaWaitTime.TotalMilliseconds + " " +
+		                         GlobalVariables.mlaWaitTimes[0].TotalMilliseconds +
 		                         " ICMean " + averageIc +
 		                         " IC50 " + percentile50 +
 		                         " IC60 " + percentile60 +

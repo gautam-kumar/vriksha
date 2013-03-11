@@ -8,13 +8,10 @@ public class GlobalVariables
 {
 
 	public static HLA hla;
-	public static List<SMLA> smlas;
-	public static List<MLA> mlas;
+	public static List<MLA>[] mlas;
 	public static List<Worker> workers;
 //	public static Dictionary<int, double> waitTimeGlobal = new Dictionary<int,double> ();
-	public static Dictionary<int, List<Task>> secondStageTasks = new Dictionary<int, List<Task>> ();
-	public static Dictionary<int, List<Task>> thirdStageTasks = new Dictionary<int, List<Task>> ();
-
+	public static Dictionary<int, List<Task>>[] mlaTasks;
 	// TODO Removed for the Ideal
 	/*
 	public static void UpdateGlobalWaitTime (int id)
@@ -52,11 +49,8 @@ public class GlobalVariables
 	public static TimeSpan timeIncrement = new TimeSpan (0, 0, 0, 0, 1);
 
 	// Topology and machine parameters
-	public static int NumWorkerPerMla = 40;
-	public static int NumSmlaPerTla = 10;
-	public static int NumMlaPerSmla = 10;
-	public static int NumMlas = 10;
-	public static int NumWorkers = 4000;
+	public static int[] Fanouts;
+	public static int NumWorkers; // TODO: Should also go
 	public static int NumQueuesInWorker = 30;
 	public static int NumQueuesInMla = 30;
 
@@ -88,9 +82,8 @@ public class GlobalVariables
 	// Wait times
 	// Wait times before sending partial responses; Set to very high value if 
 	// wait for all responses
-	public static TimeSpan mlaWaitTimeSec;
-	public static TimeSpan smlaWaitTimeSec;
-	public static TimeSpan tlaWaitTimeSec;
+	public static TimeSpan[] mlaWaitTimes;
+	public static TimeSpan tlaWaitTime;
 
 
 	// Misc
@@ -201,7 +194,7 @@ public class GlobalVariables
 	public static void ReadLogNormalOrderStats ()
 	{
 		orderStats = new Dictionary<int, double> ();
-		string[] lines = System.IO.File.ReadAllLines (@"OrderStatisticsLogNormal" + NumWorkerPerMla + ".txt");
+		string[] lines = System.IO.File.ReadAllLines (@"OrderStatisticsLogNormal" + Fanouts[Fanouts.Length - 1] + ".txt");
 		//Console.Error.WriteLine(lines.Length);
 		int i = 1;
 		foreach (string l in lines) {
