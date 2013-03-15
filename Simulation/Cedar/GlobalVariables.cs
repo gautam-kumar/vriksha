@@ -201,7 +201,7 @@ public class GlobalVariables
 			//Console.Error.WriteLine(l);
 			orderStats [i++] = double.Parse (l);
 		}
-		Console.Error.WriteLine ("Length of Order Stats Read: " + orderStats.Count);
+		//Console.Error.WriteLine ("Length of Order Stats Read: " + orderStats.Count);
 	}
 
 }
