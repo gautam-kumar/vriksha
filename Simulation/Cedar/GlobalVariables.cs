@@ -233,3 +233,9 @@ public enum TaskType
 	MlaTask,
 	TlaTask
 }  
+
+public enum ExperimentType
+{
+	Cedar,
+	PropSplit
+}

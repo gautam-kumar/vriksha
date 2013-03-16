@@ -26,11 +26,10 @@ class FacebookGoogle
 				//int bestT2 = 0;
 				//for (int t1 = 1; t1 < d; t1 += 3) {
 				//	for (int t2 = t1 + 2; t2 < d; t2 += 3) {
-				int t1 = 100, t2 = 150;
-						SetupParameters (t, t1, t2);
+						SetupParameters (t);
 						Simulate ();
 						double quality = LogResults ();
-						Console.Error.WriteLine (d + " " + t1 + " " + t2 + " ICMean: " + quality);
+						//Console.Error.WriteLine (d + " " + t1 + " " + t2 + " ICMean: " + quality);
 						if (quality > maxQuality) {
 							maxQuality = quality;
 							//bestT1 = t1;
@@ -43,11 +42,11 @@ class FacebookGoogle
 		}
 	}
 
-	public static void SetupParameters (int fanout, int d1, int d2)
+	public static void SetupParameters (int fanout)
 	{
 		/* Set up Global parameters */
-		GlobalVariables.Fanouts = new int[3] {1, 25, 50};
-		GlobalVariables.NumWorkers = 1250;
+		GlobalVariables.Fanouts = new int[4] {1, 20, 25, 50};
+		GlobalVariables.NumWorkers = 25000;
 
 		//Console.Error.WriteLine ("Topology: " + fanout);
 		GlobalVariables.ReadDcTcpNumbers ();
@@ -62,43 +61,40 @@ class FacebookGoogle
 		//GlobalVariables.timeIncrementSec = 0.001;
 		GlobalVariables.NumRequestsToSimulate = 100;
 
-		/*
-		TimeSpan waitTime1 = Algorithms.GetOptimalWaitTime3 (GlobalVariables.tlaWaitTime, 
-		                                                    GlobalVariables.Fanouts [2], GlobalVariables.Fanouts [1],
-		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
-		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
-		                                                    DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
+		TimeSpan waitTime2 = Algorithms.GetOptimal4 (GlobalVariables.tlaWaitTime, 
+		                                             GlobalVariables.Fanouts [3], GlobalVariables.Fanouts [2], GlobalVariables.Fanouts [1],
+		                                             DistType.LogNormal, GlobalVariables.workerLogNormalTimeMean, GlobalVariables.workerLogNormalTimeSigma,
+		                                             DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
+		                                             DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
+		                                             DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma
+													).Item1;
+		Console.Error.WriteLine ("MLA OPT4 is: " + waitTime2);
+
+		TimeSpan waitTime1 = waitTime2 + Algorithms.GetOptimal3 (GlobalVariables.tlaWaitTime - waitTime2, 
+		                                            GlobalVariables.Fanouts [2], GlobalVariables.Fanouts [1],
+		                                            DistType.LogNormal, GlobalVariables.workerLogNormalTimeMean, GlobalVariables.workerLogNormalTimeSigma,
+		                                            DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
+		                                            DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma
+							 						).Item1;
 		Console.Error.WriteLine ("MLA OPT3 is: " + waitTime1);
 
-		TimeSpan waitTime1Simple = Algorithms.GetOptimalWaitTime3Simple (GlobalVariables.tlaWaitTime, 
-			                                             GlobalVariables.Fanouts [2], GlobalVariables.Fanouts [1],
-			                                             DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
-			                                             DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
-		                                                                DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
-		Console.Error.WriteLine ("MLA OPT3Simple is: " + waitTime1Simple);
-
-		TimeSpan waitTime0 = waitTime1 + Algorithms.GetOptimalWaitTime2 (GlobalVariables.tlaWaitTime - waitTime1,
-		                                                                            GlobalVariables.Fanouts [1],
-		                                                       DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
-		                                                       DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
+		TimeSpan waitTime0 = waitTime1 + Algorithms.GetOptimal2 (GlobalVariables.tlaWaitTime - waitTime1,
+		                                            GlobalVariables.Fanouts [1],
+		                                            DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
+		                                            DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma)
+													.Item1;
 		Console.Error.WriteLine ("MLA OPT2 is: " + waitTime0);
 
-		TimeSpan waitTime0Simple = waitTime1Simple + Algorithms.GetOptimalWaitTime2Simple (GlobalVariables.tlaWaitTime - waitTime1Simple,
-		                                                                 GlobalVariables.Fanouts [1],
-		                                                                 DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma,
-		                                                                 DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma);
-		Console.Error.WriteLine ("MLA OPT2Simple is: " + waitTime0Simple);
-
-		*/
 		GlobalVariables.mlaWaitTimes = new TimeSpan[GlobalVariables.Fanouts.Length - 1];
-		GlobalVariables.mlaWaitTimes [1] = 
-		//new TimeSpan(0, 0, 0, 0, (int) (158 * GlobalVariables.tlaWaitTime.TotalMilliseconds / 220));
-			new TimeSpan (0, 0, 0, 0, d1);
-		//waitTime1;
-		GlobalVariables.mlaWaitTimes [0] = 
-		//new TimeSpan(0, 0, 0, 0, (int) (179 * GlobalVariables.tlaWaitTime.TotalMilliseconds / 220));
-			new TimeSpan (0, 0, 0, 0, d2);
-	
+		GlobalVariables.mlaWaitTimes [2] = waitTime2;
+		GlobalVariables.mlaWaitTimes [1] = //new TimeSpan (0, 0, 0, 0, d1);
+			waitTime1;
+		GlobalVariables.mlaWaitTimes [0] = //new TimeSpan (0, 0, 0, 0, d2);
+			waitTime0;
+
+		//GlobalVariables.mlaWaitTimes = Algorithms.GetProportionalSplit (GlobalVariables.tlaWaitTime, 
+		//                                                                new double[4] {22.0, 22.0, 22.0, 157.78});
+		Console.Error.WriteLine (GlobalVariables.mlaWaitTimes[0]);
 
 
 		GlobalVariables.init (2000);
@@ -211,6 +207,7 @@ class FacebookGoogle
 		//Console.Error.Write(GlobalVariables.mlaWaitTimeSec + " Completed Requests: {0}, ", tla.completedRequests.Count);
 		informationContents.Sort ();
 		double averageIc = informationContents.Sum () / GlobalVariables.NumRequestsToSimulate;
+		/*
 		int index50 = Math.Max (0, ((int)(50 * informationContents.Count / 100.0)) - 1);
 		double percentile50 = informationContents [index50];
 		
@@ -262,7 +259,7 @@ class FacebookGoogle
 					num99 = informationContents.Count - i;
 				}
 			}
-		}
+		}*/
 		return averageIc;
 	}
 }
