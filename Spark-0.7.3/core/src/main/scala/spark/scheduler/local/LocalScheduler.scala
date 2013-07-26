@@ -39,6 +39,7 @@ private[spark] class LocalScheduler(threads: Int, maxFailures: Int, sc: SparkCon
   }
 
   override def submitTasks(taskSet: TaskSet) {
+    logInfo("<G> LocalScheduler submitTasks called")
     val tasks = taskSet.tasks
     val failCount = new Array[Int](tasks.size)
 
@@ -73,8 +74,8 @@ private[spark] class LocalScheduler(threads: Int, maxFailures: Int, sc: SparkCon
         val deserTime = System.currentTimeMillis() - deserStart
 
         // Run it
+        logInfo("<G> The task to run is " + deserializedTask)
         val result: Any = deserializedTask.run(attemptId)
-
         // Serialize and deserialize the result to emulate what the Mesos
         // executor does. This is useful to catch serialization errors early
         // on in development (so when users move their local Spark programs

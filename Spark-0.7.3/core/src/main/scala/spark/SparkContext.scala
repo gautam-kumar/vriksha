@@ -580,9 +580,10 @@ class SparkContext(
       allowLocal: Boolean,
       resultHandler: (Int, U) => Unit) {
     val callSite = Utils.getSparkCallSite
-    logInfo("Starting job: " + callSite)
+    logInfo("<G> Starting job: " + callSite + " with function " + func)
     val start = System.nanoTime
-    val result = dagScheduler.runJob(rdd, func, partitions, callSite, allowLocal, resultHandler)
+    // <G> Changed allowLocal to false
+    val result = dagScheduler.runJob(rdd, func, partitions, callSite, false, resultHandler)
     logInfo("Job finished: " + callSite + ", took " + (System.nanoTime - start) / 1e9 + " s")
     rdd.doCheckpoint()
     result

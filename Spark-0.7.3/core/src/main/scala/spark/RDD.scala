@@ -190,9 +190,11 @@ abstract class RDD[T: ClassManifest](
    * subclasses of RDD.
    */
   final def iterator(split: Partition, context: TaskContext): Iterator[T] = {
+    // logInfo("<G> Inside RDD's iterator" + split)
     if (storageLevel != StorageLevel.NONE) {
       SparkEnv.get.cacheManager.getOrCompute(this, split, context, storageLevel)
     } else {
+      // logInfo("<G> computeOrReadCheckpoint with the desired split")
       computeOrReadCheckpoint(split, context)
     }
   }
@@ -307,7 +309,10 @@ abstract class RDD[T: ClassManifest](
    * Return the Cartesian product of this RDD and another one, that is, the RDD of all pairs of
    * elements (a, b) where a is in `this` and b is in `other`.
    */
-  def cartesian[U: ClassManifest](other: RDD[U]): RDD[(T, U)] = new CartesianRDD(sc, this, other)
+  def cartesian[U: ClassManifest](other: RDD[U]): RDD[(T, U)] = {
+    logInfo("<G> Creating a cartesian RDD")
+    new CartesianRDD(sc, this, other)
+  }
 
   /**
    * Return an RDD of grouped items.
@@ -575,6 +580,7 @@ abstract class RDD[T: ClassManifest](
    * Return the number of elements in the RDD.
    */
   def count(): Long = {
+    logInfo("<G> SparkContext's runJob is being called")
     sc.runJob(this, (iter: Iterator[T]) => {
       var result = 0L
       while (iter.hasNext) {

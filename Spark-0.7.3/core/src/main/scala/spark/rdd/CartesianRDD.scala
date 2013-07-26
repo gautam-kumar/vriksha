@@ -32,11 +32,12 @@ class CartesianRDD[T: ClassManifest, U:ClassManifest](
     var rdd2 : RDD[U])
   extends RDD[Pair[T, U]](sc, Nil)
   with Serializable {
-
+  logInfo("NumPartitions in RDD2")
   val numPartitionsInRdd2 = rdd2.partitions.size
 
   override def getPartitions: Array[Partition] = {
     // create the cross product split
+    logInfo("<G> CartesianRDD's getPartitions")
     val array = new Array[Partition](rdd1.partitions.size * rdd2.partitions.size)
     for (s1 <- rdd1.partitions; s2 <- rdd2.partitions) {
       val idx = s1.index * numPartitionsInRdd2 + s2.index
@@ -51,9 +52,12 @@ class CartesianRDD[T: ClassManifest, U:ClassManifest](
   }
 
   override def compute(split: Partition, context: TaskContext) = {
+    logInfo("<G> CartesianRDD's compute with " + rdd1 + " and " + rdd2)
     val currSplit = split.asInstanceOf[CartesianPartition]
     for (x <- rdd1.iterator(currSplit.s1, context);
-      y <- rdd2.iterator(currSplit.s2, context)) yield (x, y)
+      y <- rdd2.iterator(currSplit.s2, context))  
+        yield (x, y)
+    
   }
 
   override def getDependencies: Seq[Dependency[_]] = List(
@@ -66,6 +70,7 @@ class CartesianRDD[T: ClassManifest, U:ClassManifest](
   )
 
   override def clearDependencies() {
+    logInfo("<G> CartesianRDD's clearDependencies")
     super.clearDependencies()
     rdd1 = null
     rdd2 = null

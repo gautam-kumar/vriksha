@@ -144,6 +144,7 @@ class DAGScheduler(
    * the provided priority.
    */
   private def newStage(rdd: RDD[_], shuffleDep: Option[ShuffleDependency[_,_]], priority: Int): Stage = {
+    logInfo("<G> New Stage is getting created")
     if (shuffleDep != None) {
       // Kind of ugly: need to register RDDs with the cache and map output tracker here
       // since we can't do it in the RDD constructor because # of partitions is unknown
@@ -242,8 +243,10 @@ class DAGScheduler(
     if (partitions.size == 0) {
       return
     }
+    logInfo("<G> Preparing Job with func " + func)
     val (toSubmit, waiter) = prepareJob(
         finalRdd, func, partitions, callSite, allowLocal, resultHandler)
+    logInfo("<G> The job is put on the eventQueue")
     eventQueue.put(toSubmit)
     waiter.awaitResult() match {
       case JobSucceeded => {}
@@ -274,9 +277,12 @@ class DAGScheduler(
    */
   private[scheduler] def processEvent(event: DAGSchedulerEvent): Boolean = {
     event match {
+      // <G> The job submitted event has the final RDD 
       case JobSubmitted(finalRDD, func, partitions, allowLocal, callSite, listener) =>
         val runId = nextRunId.getAndIncrement()
+        logInfo("<G> EventQueue is now processing the job, runID " + runId + " finalRDD " + finalRDD)
         val finalStage = newStage(finalRDD, None, runId)
+        logInfo("<G> Creating an ActiveJob")
         val job = new ActiveJob(runId, finalStage, func, partitions, callSite, listener)
         clearCacheLocs()
         logInfo("Got job " + job.runId + " (" + callSite + ") with " + partitions.length +
@@ -288,6 +294,7 @@ class DAGScheduler(
           // Compute very short actions like first() or take() with no parent stages locally.
           runLocally(job)
         } else {
+          logInfo("<G> Allow Local is not permitted")
           activeJobs += job
           resultStageToJob(finalStage) = job
           submitStage(finalStage)
@@ -341,6 +348,7 @@ class DAGScheduler(
     val waiting2 = waiting.toArray
     waiting.clear()
     for (stage <- waiting2.sortBy(_.priority)) {
+      logInfo("<G> SubmitWaitingStage " + stage)
       submitStage(stage)
     }
   }
@@ -419,6 +427,7 @@ class DAGScheduler(
     if (!waiting(stage) && !running(stage) && !failed(stage)) {
       val missing = getMissingParentStages(stage).sortBy(_.id)
       logDebug("missing: " + missing)
+      logInfo("<G> Missing Parent Stages: " + missing)
       if (missing == Nil) {
         logInfo("Submitting " + stage + " (" + stage.rdd + "), which has no missing parents")
         submitMissingTasks(stage)
@@ -447,9 +456,11 @@ class DAGScheduler(
     } else {
       // This is a final stage; figure out its job's missing partitions
       val job = resultStageToJob(stage)
+      logInfo("<G> Control comes here " + job.func)
       for (id <- 0 until job.numPartitions if (!job.finished(id))) {
         val partition = job.partitions(id)
         val locs = getPreferredLocs(stage.rdd, partition)
+      	logInfo ("<G> " + id + " PreferredLocs " + locs)
         tasks += new ResultTask(stage.id, stage.rdd, job.func, partition, locs, id)
       }
     }
@@ -461,6 +472,7 @@ class DAGScheduler(
         new TaskSet(tasks.toArray, stage.id, stage.newAttemptId(), stage.priority))
       if (!stage.submissionTime.isDefined) {
         stage.submissionTime = Some(System.currentTimeMillis())
+        logInfo("<G> Submission time is " + stage.submissionTime)
       }
     } else {
       logDebug("Stage " + stage + " is actually done; %b %d %d".format(

@@ -60,7 +60,7 @@ private[spark] class ResultTask[T, U](
     var partition: Int,
     @transient locs: Seq[String],
     val outputId: Int)
-  extends Task[U](stageId) with Externalizable {
+  extends Task[U](stageId) with Externalizable with Logging {
 
   def this() = this(0, null, null, 0, null, 0)
 
@@ -74,6 +74,7 @@ private[spark] class ResultTask[T, U](
     val context = new TaskContext(stageId, partition, attemptId)
     metrics = Some(context.taskMetrics)
     try {
+      logInfo("<G> Calling " + func + " on " + split) 
       func(context, rdd.iterator(split, context))
     } finally {
       context.executeOnCompleteCallbacks()
