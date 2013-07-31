@@ -458,9 +458,9 @@ class DAGScheduler(
       val job = resultStageToJob(stage)
       logInfo("<G> Control comes here " + job.func)
       for (id <- 0 until job.numPartitions if (!job.finished(id))) {
+      	logDebug ("<G> " + id + " PreferredLocs " + job.numPartitions)
         val partition = job.partitions(id)
         val locs = getPreferredLocs(stage.rdd, partition)
-      	logInfo ("<G> " + id + " PreferredLocs " + locs)
         tasks += new ResultTask(stage.id, stage.rdd, job.func, partition, locs, id)
       }
     }
@@ -692,6 +692,7 @@ class DAGScheduler(
 
   private def getPreferredLocs(rdd: RDD[_], partition: Int): List[String] = {
     // If the partition is cached, return the cache locations
+    logDebug("<G> Inside DAGScheduler's getPreferredLocs with " + rdd + " -- " + partition)
     val cached = getCacheLocs(rdd)(partition)
     if (cached != Nil) {
       return cached

@@ -21,6 +21,7 @@ import spark.partial.BoundedDouble
 import spark.partial.CountEvaluator
 import spark.partial.GroupedCountEvaluator
 import spark.partial.PartialResult
+import spark.rdd.AggregateRDD
 import spark.rdd.CoalescedRDD
 import spark.rdd.CartesianRDD
 import spark.rdd.FilteredRDD
@@ -190,7 +191,7 @@ abstract class RDD[T: ClassManifest](
    * subclasses of RDD.
    */
   final def iterator(split: Partition, context: TaskContext): Iterator[T] = {
-    // logInfo("<G> Inside RDD's iterator" + split)
+     logInfo("<G> Inside RDD's iterator" + split)
     if (storageLevel != StorageLevel.NONE) {
       SparkEnv.get.cacheManager.getOrCompute(this, split, context, storageLevel)
     } else {
@@ -313,6 +314,16 @@ abstract class RDD[T: ClassManifest](
     logInfo("<G> Creating a cartesian RDD")
     new CartesianRDD(sc, this, other)
   }
+
+  /**
+   * Return the Aggregation of this RDD
+   * elements (a, b) where a is in `this` and b is in `other`.
+   */
+  def aggregate(n : Int): RDD[T] = {
+    logInfo("<G> Creating a Aggregate RDD")
+    new AggregateRDD(sc, this, n)
+  }
+
 
   /**
    * Return an RDD of grouped items.
