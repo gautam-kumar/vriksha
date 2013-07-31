@@ -532,6 +532,7 @@ abstract class RDD[T: ClassManifest](
       }
     }
     sc.runJob(this, reducePartition, mergeResult)
+    logInfo("REDUCE has been called")
     // Get the final result out of our Option, or throw an exception if the RDD was empty
     jobResult.getOrElse(throw new UnsupportedOperationException("empty collection"))
   }

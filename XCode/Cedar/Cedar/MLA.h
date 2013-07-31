@@ -9,6 +9,12 @@
 #ifndef Cedar_MLA_h
 #define Cedar_MLA_h
 
+#include <iostream>
 
+class MLA
+{
+public:
+    vector<double> 
+}
 
 #endif

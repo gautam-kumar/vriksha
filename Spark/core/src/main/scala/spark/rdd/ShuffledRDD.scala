@@ -2,6 +2,7 @@ package spark.rdd
 
 import spark.{Partitioner, RDD, SparkEnv, ShuffleDependency, Partition, TaskContext}
 import spark.SparkContext._
+import spark._
 
 private[spark] class ShuffledRDDPartition(val idx: Int) extends Partition {
   override val index = idx
@@ -18,11 +19,13 @@ private[spark] class ShuffledRDDPartition(val idx: Int) extends Partition {
 class ShuffledRDD[K, V](
     @transient prev: RDD[(K, V)],
     part: Partitioner)
-  extends RDD[(K, V)](prev.context, List(new ShuffleDependency(prev, part))) {
+  extends RDD[(K, V)](prev.context, List(new ShuffleDependency(prev, part))) 
+  with Logging {
 
   override val partitioner = Some(part)
 
   override def getPartitions: Array[Partition] = {
+    logInfo("GetPartitions called")
     Array.tabulate[Partition](part.numPartitions)(i => new ShuffledRDDPartition(i))
   }
 

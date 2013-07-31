@@ -12,37 +12,44 @@ class FacebookGoogle
 		Console.Error.WriteLine (args [0]);
 		int[] T = new int[1] {50};
 		foreach (int t in T) {
-			int startDeadline = Convert.ToInt32(args[0]);
-			int numDeadlines = Convert.ToInt32(args[1]);
-			int increment = 5;//0.195, 0.19, 0.20, 0.21, 0.22};
+			//int startDeadline = Convert.ToInt32(args[0]);
+			//int numDeadlines = Convert.ToInt32(args[1]);
+			//int increment = 5;//0.195, 0.19, 0.20, 0.21, 0.22};
 
-			for (int i = 0; i < numDeadlines; i++) {
-				int d = startDeadline + i * increment;
+			//for (int i = 0; i < numDeadlines; i++) {
+				int d = Convert.ToInt32(args[0]);
+				int t1Start = Convert.ToInt32 (args[1]);
+				int t1End = Convert.ToInt32 (args[2]);
 				GlobalVariables.tlaWaitTime = new TimeSpan (0, 0, 0, 0, d);
 				Console.Error.WriteLine ("Deadline is : " + GlobalVariables.tlaWaitTime);
 
 				double maxQuality = 0;
-				//int bestT1 = 0;
-				//int bestT2 = 0;
-				//for (int t1 = 1; t1 < d; t1 += 3) {
-				//	for (int t2 = t1 + 2; t2 < d; t2 += 3) {
-						SetupParameters (t);
-						Simulate ();
-						double quality = LogResults ();
-						//Console.Error.WriteLine (d + " " + t1 + " " + t2 + " ICMean: " + quality);
-						if (quality > maxQuality) {
-							maxQuality = quality;
-							//bestT1 = t1;
-							//bestT2 = t2;
+				int bestT1 = 0;
+				int bestT2 = 0;
+				int bestT3 = 0;
+				for (int t1 = t1Start; t1 < t1End; t1 += 2) {
+					for (int t2 = t1 + 2; t2 < d; t2 += 2) {
+						for (int t3 = t2 + 2; t3 < d; t3 += 2) {
+							SetupParameters (t, t1, t2, t3);
+							Simulate ();
+							double quality = LogResults ();
+							Console.Error.WriteLine (d + " " + t1 + " " + t2 + " " + t3 + " " + "ICMean: " + quality);
+							if (quality > maxQuality) {
+								maxQuality = quality;
+								bestT1 = t1;
+								bestT2 = t2;
+								bestT3 = t3;
+							}
 						}
-				//	}
-				//}
+					}
+				}
 				Console.Error.WriteLine ("For Deadline " + d + ", BestIcMean: " + maxQuality);
-			}
+				Console.Error.WriteLine("T1: " + bestT1 + " T2: " + bestT2 + " T3: " + bestT3);
+			//}
 		}
 	}
 
-	public static void SetupParameters (int fanout)
+	public static void SetupParameters (int fanout, int d1, int d2, int d3)
 	{
 		/* Set up Global parameters */
 		GlobalVariables.Fanouts = new int[4] {1, 20, 25, 50};
@@ -60,7 +67,7 @@ class FacebookGoogle
 		
 		//GlobalVariables.timeIncrementSec = 0.001;
 		GlobalVariables.NumRequestsToSimulate = 100;
-
+		/*
 		TimeSpan waitTime2 = Algorithms.GetOptimal4 (GlobalVariables.tlaWaitTime, 
 		                                             GlobalVariables.Fanouts [3], GlobalVariables.Fanouts [2], GlobalVariables.Fanouts [1],
 		                                             DistType.LogNormal, GlobalVariables.workerLogNormalTimeMean, GlobalVariables.workerLogNormalTimeSigma,
@@ -84,17 +91,18 @@ class FacebookGoogle
 		                                            DistType.LogNormal, GlobalVariables.mlaLogNormalTimeMean, GlobalVariables.mlaLogNormalTimeSigma)
 													.Item1;
 		Console.Error.WriteLine ("MLA OPT2 is: " + waitTime0);
-
+		*/
 		GlobalVariables.mlaWaitTimes = new TimeSpan[GlobalVariables.Fanouts.Length - 1];
-		GlobalVariables.mlaWaitTimes [2] = waitTime2;
-		GlobalVariables.mlaWaitTimes [1] = //new TimeSpan (0, 0, 0, 0, d1);
-			waitTime1;
-		GlobalVariables.mlaWaitTimes [0] = //new TimeSpan (0, 0, 0, 0, d2);
-			waitTime0;
+		GlobalVariables.mlaWaitTimes [2] = new TimeSpan (0, 0, 0, 0, d1);
+		//	waitTime2;
+		GlobalVariables.mlaWaitTimes [1] = new TimeSpan (0, 0, 0, 0, d2);
+		//	waitTime1;
+		GlobalVariables.mlaWaitTimes [0] = new TimeSpan (0, 0, 0, 0, d3);
+		//	waitTime0;
 
 		//GlobalVariables.mlaWaitTimes = Algorithms.GetProportionalSplit (GlobalVariables.tlaWaitTime, 
 		//                                                                new double[4] {22.0, 22.0, 22.0, 157.78});
-		Console.Error.WriteLine (GlobalVariables.mlaWaitTimes[0]);
+		//Console.Error.WriteLine (GlobalVariables.mlaWaitTimes[0]);
 
 
 		GlobalVariables.init (2000);

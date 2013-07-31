@@ -415,7 +415,6 @@ class DAGScheduler(
 
   /** Submits stage, but first recursively submits any missing parents. */
   private def submitStage(stage: Stage) {
-    logDebug("submitStage(" + stage + ")")
     if (!waiting(stage) && !running(stage) && !failed(stage)) {
       val missing = getMissingParentStages(stage).sortBy(_.id)
       logDebug("missing: " + missing)
@@ -427,6 +426,7 @@ class DAGScheduler(
         for (parent <- missing) {
           submitStage(parent)
         }
+        logDebug("Adding " + stage + " to waiting")
         waiting += stage
       }
     }
@@ -463,7 +463,7 @@ class DAGScheduler(
         stage.submissionTime = Some(System.currentTimeMillis())
       }
     } else {
-      logDebug("Stage " + stage + " is actually done; %b %d %d".format(
+      logInfo("Stage " + stage + " is actually done; %b %d %d".format(
         stage.isAvailable, stage.numAvailableOutputs, stage.numPartitions))
       running -= stage
     }

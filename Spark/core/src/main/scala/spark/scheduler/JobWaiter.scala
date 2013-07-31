@@ -1,5 +1,6 @@
 package spark.scheduler
 
+import spark._
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -7,7 +8,8 @@ import scala.collection.mutable.ArrayBuffer
  * results to the given handler function.
  */
 private[spark] class JobWaiter[T](totalTasks: Int, resultHandler: (Int, T) => Unit)
-  extends JobListener {
+  extends JobListener 
+  with Logging {
 
   private var finishedTasks = 0
 
@@ -16,12 +18,13 @@ private[spark] class JobWaiter[T](totalTasks: Int, resultHandler: (Int, T) => Un
 
   override def taskSucceeded(index: Int, result: Any) {
     synchronized {
+      logInfo("A new task finished")
       if (jobFinished) {
         throw new UnsupportedOperationException("taskSucceeded() called on a finished JobWaiter")
       }
       resultHandler(index, result.asInstanceOf[T])
       finishedTasks += 1
-      if (finishedTasks == totalTasks) {
+      if (finishedTasks == totalTasks || finishedTasks >= totalTasks / 2) {
         jobFinished = true
         jobResult = JobSucceeded
         this.notifyAll()

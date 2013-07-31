@@ -33,6 +33,7 @@ private[spark] class ApproximateActionListener[T, U, R](
         // If we had already returned a PartialResult, set its final value
         resultObject.foreach(r => r.setFinalValue(evaluator.currentResult()))
         // Notify any waiting thread that may have called awaitResult
+        //logInfo("\n Task Completed \n");
         this.notifyAll()
       }
     }
