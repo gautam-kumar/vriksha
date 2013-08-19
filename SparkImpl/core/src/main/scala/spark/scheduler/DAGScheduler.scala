@@ -456,7 +456,7 @@ class DAGScheduler(
     if (tasks.size > 0) {
       logInfo("Submitting " + tasks.size + " missing tasks from " + stage + " (" + stage.rdd + ")")
       myPending ++= tasks
-      logDebug("New pending tasks: " + myPending)
+      logInfo("New pending tasks: " + myPending + " to " + taskSched)
       taskSched.submitTasks(
         new TaskSet(tasks.toArray, stage.id, stage.newAttemptId(), stage.priority))
       if (!stage.submissionTime.isDefined) {

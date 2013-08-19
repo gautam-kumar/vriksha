@@ -86,19 +86,19 @@ class AggregateRDD[T: ClassManifest](
      * Option 2
      */
      
-    var a = Array[T]()
+    var a = new Array[Array[T]](currSplit.s1.size)
     var numTasksCompleted = 0
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(3))
-    val tasks: IndexedSeq[Future[Array[T]]] = for (i <- 0 until currSplit.s1.size) yield Future {
+    val tasks: IndexedSeq[Future[Tuple2[Int, Array[T]]]] = for (i <- 0 until currSplit.s1.size) yield Future {
     	println("Executing task " + i + " for index " + split.index)
     	val t = rdd1.iterator(currSplit.s1(i), context)
+        println("t is " + t)
         val r = t.toArray
-        numTasksCompleted += 1
-        r
+        (i, r)
     } 
-    for (f <-tasks) {
+    for (f <- tasks) {
     	f onSuccess {
-            case res => a = a ++ res 
+            case res => {println(res._1); a(res._1) = res._2; println("I am here"); numTasksCompleted += 1} 
         }    
         f onFailure {
             case t => println("An error has occured: " + t.getMessage)
@@ -108,10 +108,14 @@ class AggregateRDD[T: ClassManifest](
     while (numTasksCompleted < 1) {
     	Thread.sleep(1000L) 
     }
+    logInfo("<G> The current Time is " + sdf.format(new Date(System.currentTimeMillis())));
     //val squares = awaitAll(2000L, tasks: _*)
-    logInfo("<G> The number of tasks completed: " + numTasksCompleted + " with count: " + a.count(x => true))
-    // logInfo("<G> The current Time is " + sdf.format(new Date(System.currentTimeMillis())));
-    a.iterator
+    var b = Iterator[T]()
+    for (x <- a) {
+    	if (x != null)
+    	    b = b ++ x.iterator
+    }
+    b
     
   }
 
