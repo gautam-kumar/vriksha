@@ -191,11 +191,12 @@ abstract class RDD[T: ClassManifest](
    * subclasses of RDD.
    */
   final def iterator(split: Partition, context: TaskContext): Iterator[T] = {
-     logInfo("<G> Inside RDD's iterator" + split)
+     logInfo("<G> Inside RDD's iterator " + split)
     if (storageLevel != StorageLevel.NONE) {
+      logInfo("<G> StorageLevel is not NONE, calling getOrCompute");
       SparkEnv.get.cacheManager.getOrCompute(this, split, context, storageLevel)
     } else {
-      // logInfo("<G> computeOrReadCheckpoint with the desired split")
+      logInfo("<G> computeOrReadCheckpoint with the desired split")
       computeOrReadCheckpoint(split, context)
     }
   }
@@ -594,6 +595,7 @@ abstract class RDD[T: ClassManifest](
     logInfo("<G> SparkContext's runJob is being called")
     sc.runJob(this, (iter: Iterator[T]) => {
       var result = 0L
+      logInfo("<G> Am in the count function")
       while (iter.hasNext) {
         result += 1L
         iter.next()
