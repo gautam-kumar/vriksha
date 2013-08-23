@@ -98,7 +98,7 @@ class AggregateRDD[T: ClassManifest](
     } 
     for (f <- tasks) {
     	f onSuccess {
-            case res => {println(res._1); a(res._1) = res._2; println("I am here"); numTasksCompleted += 1} 
+            case res => {println(res._1); a(res._1) = res._2; numTasksCompleted += 1; logInfo("<G> NumCompleted: " + numTasksCompleted);} 
         }    
         f onFailure {
             case t => println("An error has occured: " + t.getMessage)
