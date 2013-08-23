@@ -88,7 +88,7 @@ class AggregateRDD[T: ClassManifest](
      
     var a = new Array[Array[T]](currSplit.s1.size)
     var numTasksCompleted = 0
-    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(3))
+    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
     val tasks: IndexedSeq[Future[Tuple2[Int, Array[T]]]] = for (i <- 0 until currSplit.s1.size) yield Future {
     	println("Executing task " + i + " for index " + split.index)
     	val t = rdd1.iterator(currSplit.s1(i), context)
