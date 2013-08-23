@@ -90,15 +90,15 @@ class AggregateRDD[T: ClassManifest](
     var numTasksCompleted = 0
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
     val tasks: IndexedSeq[Future[Tuple2[Int, Array[T]]]] = for (i <- 0 until currSplit.s1.size) yield Future {
-    	println("Executing task " + i + " for index " + split.index)
+    	logInfo("Executing task " + i + " for index " + split.index)
     	val t = rdd1.iterator(currSplit.s1(i), context)
-        println("t is " + t)
         val r = t.toArray
+        logInfo("Result size is " + r.size)
         (i, r)
     } 
     for (f <- tasks) {
     	f onSuccess {
-            case res => {println(res._1); a(res._1) = res._2; numTasksCompleted += 1; logInfo("<G> NumCompleted: " + numTasksCompleted);} 
+            case res => {println("Result 1: " + res._1); a(res._1) = res._2; numTasksCompleted += 1; logInfo("<G> NumCompleted: " + numTasksCompleted);} 
         }    
         f onFailure {
             case t => println("An error has occured: " + t.getMessage)
