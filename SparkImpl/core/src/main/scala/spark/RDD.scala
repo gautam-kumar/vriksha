@@ -17,6 +17,7 @@ import org.apache.hadoop.mapred.TextOutputFormat
 import it.unimi.dsi.fastutil.objects.{Object2LongOpenHashMap => OLMap}
 
 import spark.Partitioner._
+import spark.partial.AggregateEvaluator
 import spark.partial.BoundedDouble
 import spark.partial.CountEvaluator
 import spark.partial.GroupedCountEvaluator
@@ -615,17 +616,12 @@ abstract class RDD[T: ClassManifest](
   /**
    * (Experimental) version of partial aggregation
    */
-  def partialAggregate(timeout: Long): PartialResult[BoundedDouble] = {
-    val : (TaskContext, Iterator[T]) => Long = { (ctx, iter) =>
-      var result = 0L
-      while (iter.hasNext) {
-        result += 1L
-        iter.next()
-      }
-      result
+  def partialAggregate(timeout: Long): PartialResult[Array[T]] = {
+    val forceIteratorToArray: (TaskContext, Iterator[T]) => Array[T] = { (ctx, iter) =>
+      iter.toArray
     }
-    val evaluator = new CountEvaluator(partitions.size, confidence)
-    sc.runApproximateJob(this, countElements, evaluator, timeout)
+    val evaluator = new AggregateEvaluator(partitions.size)
+    sc.runApproximateJob(this, forceIteratorToArray, evaluator, timeout)
   }
 
 

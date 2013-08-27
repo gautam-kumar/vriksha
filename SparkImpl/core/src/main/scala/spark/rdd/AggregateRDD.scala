@@ -72,20 +72,6 @@ class AggregateRDD[T: ClassManifest](
     logInfo("<G> AggregateRDD's compute with " + rdd1 + ", " + currSplit.s1.size)
 
     val sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-    /*
-     * Option 1
-     */
-     /*
-    var a = Iterator[T]()
-    for (i <- 0 until currSplit.s1.size) {
-        a = a ++ (for (x <- rdd1.iterator(currSplit.s1(i), context) ) yield x )
-    }
-    a
-     */
-    
-    /*
-     * Option 2
-     */
      
     var a = new Array[Array[T]](currSplit.s1.size)
     var numTasksCompleted = 0
