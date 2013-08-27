@@ -10,6 +10,7 @@ import scala.math
 import spark._
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.concurrent.atomic.AtomicInteger
 
 private[spark]
 class AggregatePartition(
@@ -89,32 +90,41 @@ class AggregateRDD[T: ClassManifest](
     var a = new Array[Array[T]](currSplit.s1.size)
     var numTasksCompleted = 0
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
+    logInfo("Starting execution at " + System.currentTimeMillis());
     val tasks: IndexedSeq[Future[Tuple2[Int, Array[T]]]] = for (i <- 0 until currSplit.s1.size) yield Future {
-    	logInfo("Executing task " + i + " for index " + split.index)
+    	logInfo("Executing task " + i + " for index " + split.index + " at " + System.currentTimeMillis());
     	val t = rdd1.iterator(currSplit.s1(i), context)
         val r = t.toArray
-        logInfo("Result size is " + r.size)
+        logInfo("Result size for " + i + " is " + r.size + " at " + System.currentTimeMillis());
         (i, r)
     } 
     for (f <- tasks) {
     	f onSuccess {
-            case res => {println("Result 1: " + res._1); a(res._1) = res._2; numTasksCompleted += 1; logInfo("<G> NumCompleted: " + numTasksCompleted);} 
+            case res => {
+		this.synchronized {
+		  logInfo("Result 1: " + res._1); 
+		  a(res._1) = res._2; 
+		  numTasksCompleted += 1; 
+		}
+		logInfo("<G> NumCompleted: " + numTasksCompleted);
+	    } 
         }    
         f onFailure {
             case t => println("An error has occured: " + t.getMessage)
         }
     }
     
-    while (numTasksCompleted < 1) {
+    while (numTasksCompleted < (currSplit.s1.size)) {
+	logInfo("NumCompleted " + numTasksCompleted + " is less than one so sleeping more")
     	Thread.sleep(1000L) 
     }
-    logInfo("<G> The current Time is " + sdf.format(new Date(System.currentTimeMillis())));
     //val squares = awaitAll(2000L, tasks: _*)
     var b = Iterator[T]()
     for (x <- a) {
     	if (x != null)
     	    b = b ++ x.iterator
     }
+    logInfo("Returning result at " + System.currentTimeMillis());
     b
     
   }

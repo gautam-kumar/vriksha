@@ -613,6 +613,24 @@ abstract class RDD[T: ClassManifest](
   }
 
   /**
+   * (Experimental) version of partial aggregation
+   */
+  def partialAggregate(timeout: Long): PartialResult[BoundedDouble] = {
+    val : (TaskContext, Iterator[T]) => Long = { (ctx, iter) =>
+      var result = 0L
+      while (iter.hasNext) {
+        result += 1L
+        iter.next()
+      }
+      result
+    }
+    val evaluator = new CountEvaluator(partitions.size, confidence)
+    sc.runApproximateJob(this, countElements, evaluator, timeout)
+  }
+
+
+
+  /**
    * Return the count of each unique value in this RDD as a map of (value, count) pairs. The final
    * combine step happens locally on the master, equivalent to running a single reduce task.
    */
