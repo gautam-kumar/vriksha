@@ -1,7 +1,7 @@
 package spark.partial
 
 import cern.jet.stat.Probability
-
+import spark.Logging
 /**
  * An ApproximateEvaluator for aggregation.
  *
@@ -9,12 +9,13 @@ import cern.jet.stat.Probability
  * be best to make this a special case of GroupedCountEvaluator with one group.
  */
 private[spark] class AggregateEvaluator[T : ClassManifest](totalOutputs: Int)
-  extends ApproximateEvaluator[Array[T], Array[T]] {
+  extends ApproximateEvaluator[Array[T], Array[T]] with Logging {
 
   var outputsMerged = 0
   var sum: Array[T] = new Array[T](0) 
 
   override def merge(outputId: Int, taskResult: Array[T]) {
+    logInfo("<G> AggregateEvaluator's merge called")
     outputsMerged += 1
     sum = sum ++ taskResult
   }

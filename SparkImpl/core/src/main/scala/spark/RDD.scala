@@ -36,6 +36,7 @@ import spark.rdd.SampledRDD
 import spark.rdd.ShuffledRDD
 import spark.rdd.SubtractedRDD
 import spark.rdd.UnionRDD
+import spark.rdd.WaitPartitionsRDD
 import spark.rdd.ZippedRDD
 import spark.storage.StorageLevel
 
@@ -93,7 +94,10 @@ abstract class RDD[T: ClassManifest](
    * Implemented by subclasses to return how this RDD depends on parent RDDs. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
    */
-  protected def getDependencies: Seq[Dependency[_]] = deps
+  protected def getDependencies: Seq[Dependency[_]] = {
+    logInfo("<G> Deps are: " + deps)
+    deps
+  }
 
   /** Optionally overridden by subclasses to specify placement preferences. */
   protected def getPreferredLocations(split: Partition): Seq[String] = Nil
@@ -193,8 +197,13 @@ abstract class RDD[T: ClassManifest](
    */
   final def iterator(split: Partition, context: TaskContext): Iterator[T] = {
     if (storageLevel != StorageLevel.NONE) {
-      SparkEnv.get.cacheManager.getOrCompute(this, split, context, storageLevel)
+      println("getOrCompute with ")
+      println("getOrCompute with " + SparkEnv.get.cacheManager)
+      val a = SparkEnv.get.cacheManager.getOrCompute(this, split, context, storageLevel)
+      println("getOrCompute results in " + a)
+      a
     } else {
+      println("computeOrReadCheckpoint for " + this)
       computeOrReadCheckpoint(split, context)
     }
   }
@@ -253,9 +262,9 @@ abstract class RDD[T: ClassManifest](
    * Return the Aggregation of this RDD
    * elements (a, b) where a is in `this` and b is in `other`.
    */
-  def aggregate(n : Int): RDD[T] = {
+  def aggregate(n : Int, deadline: Int): RDD[T] = {
     logInfo("<G> Creating a Aggregate RDD")
-    new AggregateRDD(sc, this, n)
+    new AggregateRDD(sc, this, n, deadline)
   }
 
   /**
@@ -363,6 +372,25 @@ abstract class RDD[T: ClassManifest](
   def mapPartitions[U: ClassManifest](f: Iterator[T] => Iterator[U],
     preservesPartitioning: Boolean = false): RDD[U] =
     new MapPartitionsRDD(this, sc.clean(f), preservesPartitioning)
+
+  /**
+   * Return a new RDD by applying a function to each partition of this RDD.
+   */
+  def topKPartitions(k: Int) : RDD[Int] = {
+    var topK: Iterator[T] => Iterator[Int] = {partitionIterator =>
+      var lengthIterator = for (x <- partitionIterator) yield x.asInstanceOf[String].length()
+      var sorted = lengthIterator.toArray.sorted
+      sorted.takeRight(k).iterator
+    }
+    new MapPartitionsRDD(this, sc.clean(topK), true)
+  }
+
+  /**
+   * Return a new RDD by applying a function to each partition of this RDD.
+   */
+  def waitPartitions(): RDD[T] = {
+    new WaitPartitionsRDD(this, true)
+  }
 
   /**
    * Return a new RDD by applying a function to each partition of this RDD, while tracking the index
