@@ -106,7 +106,9 @@ class AggregateRDD[T: ClassManifest](
     var numTasksCompleted = 0
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
     logInfo("Starting execution at " + System.currentTimeMillis());
+    val env = SparkEnv.get
     val tasks: IndexedSeq[Future[Tuple2[Int, Array[T]]]] = for (i <- 0 until currSplit.s1.size) yield Future {
+    	SparkEnv.set(env)
     	logInfo("Executing task " + i + " for split " + split.index + " at " + System.currentTimeMillis());
     	val t = rdd1.iterator(currSplit.s1(i), context)
         val r = t.toArray

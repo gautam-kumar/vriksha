@@ -47,8 +47,8 @@ class CoalescedRDD[T: ClassManifest](
   override def compute(split: Partition, context: TaskContext): Iterator[T] = {
     logInfo("Computing split " + split + " of Coalescing")
     split.asInstanceOf[CoalescedRDDPartition].parents.iterator.flatMap { parentSplit =>
-      firstParent[T].iterator(parentSplit, context)
-      
+      val a = firstParent[T].iterator(parentSplit, context).toArray
+      a.iterator
     }
   }
 
