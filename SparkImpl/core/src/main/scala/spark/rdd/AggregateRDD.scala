@@ -5,7 +5,7 @@ import java.io.{ObjectOutputStream, IOException}
 import java.util.concurrent.Executors
 import akka.dispatch.Future
 import akka.dispatch.{Future, ExecutionContext, Promise }
-import org.apache.commons.math
+import org.apache.commons.math.distribution.NormalDistributionImpl
 import spark._
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -35,7 +35,7 @@ class AggregateRDD[T: ClassManifest](
     sc: SparkContext,
     var rdd1 : RDD[T],
     numPartitions : Int,
-    deadline : Int,
+    deadline : Int, // in seconds
     initialMeanEstimate: Double,
     initialSigmaEstimate: Double,
     aboveMean: Double,
@@ -99,11 +99,13 @@ class AggregateRDD[T: ClassManifest](
     var maxTime = 1
     val increment = 1
     val k = 50
-    while (time < deadline) {
-    	val aboveQualityWithoutWait = Cdf(deadline - time, m2, s2)
-    	val aboveQualityWithWait = Cdf(deadline - time - increment, m2, s2)
-    	val c1 = Cdf(time, m1, s1)
-    	val c1t = Cdf(time + increment, m1, s1)
+    val nDist1 = new NormalDistributionImpl(m1, s1)
+    val nDist2 = new NormalDistributionImpl(m2, s2)
+    while (time < deadline - increment) {
+    	val aboveQualityWithoutWait = nDist2.cumulativeProbability(natLog(deadline - time))
+    	val aboveQualityWithWait = nDist2.cumulativeProbability(natLog(deadline - time - increment))
+    	val c1 = nDist1.cumulativeProbability(natLog(time))
+    	val c1t = nDist1.cumulativeProbability(natLog(time + increment))
     	val gain = (c1t - c1) * aboveQualityWithoutWait
     	val loss = (c1 - pow(c1, k)) *  (aboveQualityWithoutWait - aboveQualityWithWait)
     	quality += (gain - loss)
@@ -167,7 +169,7 @@ class AggregateRDD[T: ClassManifest](
 		  a(res._1) = res._2;
 		  numTasksCompleted += 1; 
 		  // Code to update wait time
-		  updateMeanAndSigma(numTasksCompleted, System.nanoTime);
+//		  updateMeanAndSigma(numTasksCompleted, System.nanoTime);
 		  
 		}
 		logInfo("<G> NumCompleted: " + numTasksCompleted);
@@ -179,10 +181,13 @@ class AggregateRDD[T: ClassManifest](
     }
 
 
-    val timeOut = getOptimalWaitTime(20, 4.4, 1.15, 2.94, 0.52)
-    while (((System.nanoTime - beginTime)/1000000 < timeOut) &&
-    	(numTasksCompleted < currSplit.s1.size)) {
-    	Thread.sleep(1000L) 
+//
+    val timeOut = getOptimalWaitTime(deadline / 1000, 4.4, 1.15, 2.94, 0.52)
+    while (((System.nanoTime - beginTime)/1000000 < timeOut) || (numTasksCompleted < 1) 
+    	&& (numTasksCompleted < currSplit.s1.size)) { 
+    	Thread.sleep(1000L)
+    	logInfo("<G> Sleeping more: " + numTasksCompleted + ", " +
+    	currSplit.s1.size)
     }
     logInfo("<G> Out of sleep loop at " + (System.nanoTime - beginTime)/1000000)
     //val squares = awaitAll(2000L, tasks: _*)
