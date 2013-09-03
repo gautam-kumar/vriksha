@@ -264,7 +264,7 @@ abstract class RDD[T: ClassManifest](
    */
   def aggregate(n : Int, deadline: Int): RDD[T] = {
     logInfo("<G> Creating a Aggregate RDD")
-    new AggregateRDD(sc, this, n, deadline)
+    new AggregateRDD(sc, this, n, deadline, 4.4, 1.15, 2.94, 0.52)
   }
 
   /**
