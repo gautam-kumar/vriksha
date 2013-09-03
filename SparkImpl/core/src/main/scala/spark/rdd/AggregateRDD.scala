@@ -118,8 +118,7 @@ class AggregateRDD[T: ClassManifest](
     } 
 
     logInfo("<G> MaxQuality is " + maxQuality + " at time " + maxTime)
-    // TODO Return maxTime instead of 4000
-    4000
+    maxTime
   }
 
   private def updateMeanAndSigma(n: Int, curTaskCompletionTime: Double) = {
@@ -181,13 +180,12 @@ class AggregateRDD[T: ClassManifest](
     }
 
 
-//
-    val timeOut = getOptimalWaitTime(deadline / 1000, 4.4, 1.15, 2.94, 0.52)
-    while (((System.nanoTime - beginTime)/1000000 < timeOut) || (numTasksCompleted < 1) 
-    	&& (numTasksCompleted < currSplit.s1.size)) { 
+    // TODO: Must learn distribution online
+    val timeOut = getOptimalWaitTime(deadline / 1000, 4.4, 1.15, 2.94, 0.52) * 1000 // Conversion to ms
+    while ((((System.nanoTime - beginTime)/1000000 < timeOut) || (numTasksCompleted < 1)) && (numTasksCompleted < currSplit.s1.size)) { 
     	Thread.sleep(1000L)
     	logInfo("<G> Sleeping more: " + numTasksCompleted + ", " +
-    	currSplit.s1.size)
+    	currSplit.s1.size + "--" + (numTasksCompleted < currSplit.s1.size))
     }
     logInfo("<G> Out of sleep loop at " + (System.nanoTime - beginTime)/1000000)
     //val squares = awaitAll(2000L, tasks: _*)
