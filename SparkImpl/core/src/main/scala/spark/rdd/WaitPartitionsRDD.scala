@@ -1,13 +1,17 @@
 package spark.rdd
 
 import spark.{RDD, Partition, TaskContext}
+import org.apache.commons.math.distribution.NormalDistributionImpl
 
 private[spark]
 class WaitPartitionsRDD[T: ClassManifest](
     prev: RDD[T],
+    logDistMean: Double,
+    logDistSigma: Double,
     preservesPartitioning: Boolean = false)
   extends RDD[T](prev) {
-
+  
+  val rng = new NormalDistribution(logDistMean, logDistSigma)
   override val partitioner =
     if (preservesPartitioning) firstParent[T].partitioner else None
 
@@ -15,9 +19,8 @@ class WaitPartitionsRDD[T: ClassManifest](
 
   override def compute(split: Partition, context: TaskContext) = {
       val a = firstParent[T].iterator(split, context).take(20)
-      logInfo("Sleeping now")
+      val s = rng.sample()
       Thread.sleep(10000)
-      logInfo("Sleeping Done")
       a
     }
 }

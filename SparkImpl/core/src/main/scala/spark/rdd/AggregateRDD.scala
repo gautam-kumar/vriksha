@@ -87,10 +87,6 @@ class AggregateRDD[T: ClassManifest](
     result
   }
 
-  private def Cdf(d: Double, m: Double, s: Double) = {
-    1.0
-  }
-
   private def getOptimalWaitTime(deadline: Int, m1: Double, s1: Double,
                                                 m2: Double, s2: Double) = {
     var quality = 0.0
@@ -122,7 +118,7 @@ class AggregateRDD[T: ClassManifest](
   }
 
   private def updateMeanAndSigma(n: Int, curTaskCompletionTime: Double) = {
-   
+    // TODO: verify this code 
     val r = natLog(curTaskCompletionTime)
     // If this is the first task completes
     if (n != 1) {
