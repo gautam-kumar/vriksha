@@ -388,8 +388,8 @@ abstract class RDD[T: ClassManifest](
   /**
    * Return a new RDD by applying a function to each partition of this RDD.
    */
-  def waitPartitions(): RDD[T] = {
-    new WaitPartitionsRDD(this, true)
+  def waitPartitions(logDistMean: Double, logDistSigma: Double): RDD[T] = {
+    new WaitPartitionsRDD(this, logDistMean, logDistSigma, true)
   }
 
   /**

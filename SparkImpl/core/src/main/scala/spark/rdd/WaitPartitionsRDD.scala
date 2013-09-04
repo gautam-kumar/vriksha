@@ -11,7 +11,7 @@ class WaitPartitionsRDD[T: ClassManifest](
     preservesPartitioning: Boolean = false)
   extends RDD[T](prev) {
   
-  val rng = new NormalDistribution(logDistMean, logDistSigma)
+  val rng = new NormalDistributionImpl(logDistMean, logDistSigma)
   override val partitioner =
     if (preservesPartitioning) firstParent[T].partitioner else None
 
@@ -19,8 +19,9 @@ class WaitPartitionsRDD[T: ClassManifest](
 
   override def compute(split: Partition, context: TaskContext) = {
       val a = firstParent[T].iterator(split, context).take(20)
-      val s = rng.sample()
-      Thread.sleep(10000)
+      val s = (rng.sample() * 1000).toLong
+      logInfo("Sleeping for " + s)
+      Thread.sleep(s)
       a
     }
 }
