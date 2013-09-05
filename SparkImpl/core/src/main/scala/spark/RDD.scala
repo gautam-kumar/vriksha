@@ -377,13 +377,14 @@ abstract class RDD[T: ClassManifest](
    * Return a new RDD by applying a function to each partition of this RDD.
    */
   def mapAndWaitPartitions(k: Int, logDistMean: Double, logDistSigma: Double) : RDD[Int] = {
-     
-    var topK: Iterator[T] => Iterator[Int] = {partitionIterator =>
+    var cedarFunc: Iterator[T] => Iterator[Int] = {partitionIterator =>
       var lengthIterator = for (x <- partitionIterator) yield x.asInstanceOf[String].length()
       var sorted = lengthIterator.toArray.sorted
-      sorted.takeRight(k).iterator
+      var count = new Array[Int](1)
+      count(0) = sorted.size
+      count.iterator
     }
-    new MapAndWaitPartitionsRDD(this, sc.clean(topK), logDistMean, logDistSigma, false)
+    new MapAndWaitPartitionsRDD(this, sc.clean(cedarFunc), logDistMean, logDistSigma, false)
   }
 
   /**
