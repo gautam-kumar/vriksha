@@ -29,6 +29,7 @@ import spark.rdd.FilteredRDD
 import spark.rdd.FlatMappedRDD
 import spark.rdd.GlommedRDD
 import spark.rdd.MappedRDD
+import spark.rdd.MapAndWaitPartitionsRDD
 import spark.rdd.MapPartitionsRDD
 import spark.rdd.MapPartitionsWithIndexRDD
 import spark.rdd.PipedRDD
@@ -36,7 +37,7 @@ import spark.rdd.SampledRDD
 import spark.rdd.ShuffledRDD
 import spark.rdd.SubtractedRDD
 import spark.rdd.UnionRDD
-import spark.rdd.MapAndWaitPartitionsRDD
+import spark.rdd.WaitPartitionsRDD
 import spark.rdd.ZippedRDD
 import spark.storage.StorageLevel
 
@@ -374,7 +375,8 @@ abstract class RDD[T: ClassManifest](
     new MapPartitionsRDD(this, sc.clean(f), preservesPartitioning)
 
   /**
-   * Return a new RDD by applying a function to each partition of this RDD.
+   * Return a new RDD by applying a function to each partition of this RDD 
+   * and then waiting based on log normal distribution.
    */
   def mapAndWaitPartitions(k: Int, logDistMean: Double, logDistSigma: Double) : RDD[Int] = {
     var cedarFunc: Iterator[T] => Iterator[Int] = {partitionIterator =>
@@ -388,11 +390,11 @@ abstract class RDD[T: ClassManifest](
   }
 
   /**
-   * Return a new RDD by applying a function to each partition of this RDD.
+   * Return a new RDD by waiting as per a log-normal distribution.
    */
-  //def waitPartitions(logDistMean: Double, logDistSigma: Double): RDD[T] = {
-  //  new WaitPartitionsRDD(this, logDistMean, logDistSigma, true)
-  //}
+  def waitPartitions(logDistMean: Double, logDistSigma: Double): RDD[T] = {
+    new WaitPartitionsRDD(this, logDistMean, logDistSigma, false)
+  }
 
   /**
    * Return a new RDD by applying a function to each partition of this RDD, while tracking the index
