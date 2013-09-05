@@ -36,7 +36,7 @@ import spark.rdd.SampledRDD
 import spark.rdd.ShuffledRDD
 import spark.rdd.SubtractedRDD
 import spark.rdd.UnionRDD
-import spark.rdd.WaitPartitionsRDD
+import spark.rdd.MapAndWaitPartitionsRDD
 import spark.rdd.ZippedRDD
 import spark.storage.StorageLevel
 
@@ -376,21 +376,22 @@ abstract class RDD[T: ClassManifest](
   /**
    * Return a new RDD by applying a function to each partition of this RDD.
    */
-  def topKPartitions(k: Int) : RDD[Int] = {
+  def mapAndWaitPartitions(k: Int, logDistMean: Double, logDistSigma: Double) : RDD[Int] = {
+     
     var topK: Iterator[T] => Iterator[Int] = {partitionIterator =>
       var lengthIterator = for (x <- partitionIterator) yield x.asInstanceOf[String].length()
       var sorted = lengthIterator.toArray.sorted
       sorted.takeRight(k).iterator
     }
-    new MapPartitionsRDD(this, sc.clean(topK), true)
+    new MapAndWaitPartitionsRDD(this, sc.clean(topK), logDistMean, logDistSigma, false)
   }
 
   /**
    * Return a new RDD by applying a function to each partition of this RDD.
    */
-  def waitPartitions(logDistMean: Double, logDistSigma: Double): RDD[T] = {
-    new WaitPartitionsRDD(this, logDistMean, logDistSigma, true)
-  }
+  //def waitPartitions(logDistMean: Double, logDistSigma: Double): RDD[T] = {
+  //  new WaitPartitionsRDD(this, logDistMean, logDistSigma, true)
+  //}
 
   /**
    * Return a new RDD by applying a function to each partition of this RDD, while tracking the index
