@@ -39,7 +39,8 @@ class AggregateRDD[T: ClassManifest](
     initialMeanEstimate: Double,
     initialSigmaEstimate: Double,
     aboveMean: Double,
-    aboveSigma: Double) // Deadline in milliseconds
+    aboveSigma: Double,
+    useCedar: Boolean = true) // Deadline in milliseconds
   extends RDD[T](sc, Nil)
   with Serializable {
 
@@ -177,9 +178,9 @@ class AggregateRDD[T: ClassManifest](
 
 
     // TODO: Must learn distribution online
-    // Cedar
-    //var timeOut = getOptimalWaitTime(deadline / 1000, 4.4, 1.15, 2.94, 0.52) * 1000 // Conversion to ms
-    var timeOut = deadline.toDouble * (157.78 / 179.78)
+    var timeOut = 0.0
+    if (useCedar) timeOut = getOptimalWaitTime(deadline / 1000, mean, sigma, aboveMean, aboveSigma) * 1000 // Conversion to ms
+    else timeOut = deadline.toDouble * (157.78 / 179.78)
     while ((((System.nanoTime - beginTime)/1000000 < timeOut) || (numTasksCompleted < 1)) && (numTasksCompleted < currSplit.s1.size)) { 
     	Thread.sleep(1000L)
     	logInfo("<G> Sleeping more: " + numTasksCompleted + ", " +
