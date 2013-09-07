@@ -1,0 +1,5 @@
+val pageCount = sc.textFile("/wiki/pagecounts")
+val mW = pageCount.mapAndWaitPartitions(20, 4.3, 1.15)
+val agg = mW.aggregate(4, 175000, 4.4, 1.15, 2.94, 0.52, true)
+val w = agg.waitPartitions(2.94, 0.52)
+w.partialAggregate(175000)
