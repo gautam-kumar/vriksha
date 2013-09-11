@@ -272,6 +272,16 @@ abstract class RDD[T: ClassManifest](
                      initialMeanEstimate, initialSigmaEstimate, aboveMean, aboveSigma,
                      useCedar)
   }
+  
+  def cedar(k: Int, d: Int,
+            x1mean: Double, x1sigma: Double,
+            x2mean: Double, x2sigma: Double,
+            useCedar: Boolean):PartialResult[Array[Int]] = {
+    val mW = this.mapAndWaitPartitions(x1mean, x1sigma)
+    val agg = mW.aggregate(k, d, x1mean, x1sigma, x2mean, x2sigma, useCedar)
+    val w = agg.waitPartitions(x2mean, x2sigma)
+    w.partialAggregate(d)
+  }
 
   /**
    * Return a sampled subset of this RDD.
@@ -383,12 +393,11 @@ abstract class RDD[T: ClassManifest](
    * Return a new RDD by applying a function to each partition of this RDD 
    * and then waiting based on log normal distribution.
    */
-  def mapAndWaitPartitions(k: Int, logDistMean: Double, logDistSigma: Double) : RDD[Int] = {
+  def mapAndWaitPartitions(logDistMean: Double, logDistSigma: Double) : RDD[Int] = {
     var cedarFunc: Iterator[T] => Iterator[Int] = {partitionIterator =>
-      var lengthIterator = for (x <- partitionIterator) yield x.asInstanceOf[String].length()
-      var sorted = lengthIterator.toArray.sorted
+      var num = partitionIterator.next()
       var count = new Array[Int](1)
-      count(0) = sorted.size
+      count(0) = num.asInstanceOf[Int]
       count.iterator
     }
     new MapAndWaitPartitionsRDD(this, sc.clean(cedarFunc), logDistMean, logDistSigma, false)
