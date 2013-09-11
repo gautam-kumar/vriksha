@@ -263,9 +263,14 @@ abstract class RDD[T: ClassManifest](
    * Return the Aggregation of this RDD
    * elements (a, b) where a is in `this` and b is in `other`.
    */
-  def aggregate(n : Int, deadline: Int): RDD[T] = {
+  def aggregate(n : Int, deadline: Int, 
+                initialMeanEstimate: Double, initialSigmaEstimate: Double,
+                aboveMean: Double, aboveSigma: Double,
+                useCedar: Boolean = true): RDD[T] = {
     logInfo("<G> Creating a Aggregate RDD")
-    new AggregateRDD(sc, this, n, deadline, 4.4, 1.15, 2.94, 0.52)
+    new AggregateRDD(sc, this, n, deadline, 
+                     initialMeanEstimate, initialSigmaEstimate, aboveMean, aboveSigma,
+                     useCedar)
   }
 
   /**
