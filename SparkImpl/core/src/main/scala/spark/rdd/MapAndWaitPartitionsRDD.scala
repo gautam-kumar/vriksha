@@ -10,6 +10,8 @@ class MapAndWaitPartitionsRDD[T: ClassManifest, U: ClassManifest](
     f: Iterator[T] => Iterator[U],
     logDistMean: Double,
     logDistSigma: Double,
+    taskDist: Array[Double],
+    useTaskDist: Boolean = false,
     preservesPartitioning: Boolean = false)
   extends RDD[U](prev) {
   
@@ -21,7 +23,11 @@ class MapAndWaitPartitionsRDD[T: ClassManifest, U: ClassManifest](
 
   override def compute(split: Partition, context: TaskContext) = {
     val a = f(firstParent[T].iterator(split, context))
-    val s = (math.exp(rng.sample()) * 1000).toLong
+    var s = 0.toLong
+    if (useTaskDist)
+      s = (taskDist(scala.util.Random.nextInt(taskDist.size)) * 1000).toLong
+    else
+      s = (math.exp(rng.sample()) * 1000).toLong
     logInfo("Sleeping for " + s)
     Thread.sleep(s)
     a

@@ -166,7 +166,6 @@ class AggregateRDD[T: ClassManifest](
 		  numTasksCompleted += 1; 
 		  // Code to update wait time
 //		  updateMeanAndSigma(numTasksCompleted, System.nanoTime);
-		  
 		}
 		logInfo("<G> NumCompleted: " + numTasksCompleted);
 	    } 
@@ -181,10 +180,11 @@ class AggregateRDD[T: ClassManifest](
     var timeOut = 0.0
     if (useCedar) timeOut = getOptimalWaitTime(deadline / 1000, mean, sigma, aboveMean, aboveSigma) * 1000 // Conversion to ms
     else timeOut = deadline.toDouble * (157.78 / 179.78)
+    logInfo("<G> TimeOut Computed as: " + timeOut)
     while ((((System.nanoTime - beginTime)/1000000 < timeOut) || (numTasksCompleted < 1)) && (numTasksCompleted < currSplit.s1.size)) { 
     	Thread.sleep(1000L)
-    	logInfo("<G> Sleeping more: " + numTasksCompleted + ", " +
-    	currSplit.s1.size + "--" + (numTasksCompleted < currSplit.s1.size))
+    	//logInfo("<G> Sleeping more: " + numTasksCompleted + ", " +
+    	//currSplit.s1.size + "--" + (numTasksCompleted < currSplit.s1.size))
     }
     logInfo("<G> Out of sleep loop at " + (System.nanoTime - beginTime)/1000000)
     //val squares = awaitAll(2000L, tasks: _*)
