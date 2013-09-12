@@ -16,6 +16,7 @@ import org.apache.hadoop.mapred.TextOutputFormat
 
 import it.unimi.dsi.fastutil.objects.{Object2LongOpenHashMap => OLMap}
 
+import spark.CedarUtils
 import spark.Partitioner._
 import spark.partial.AggregateEvaluator
 import spark.partial.BoundedDouble
@@ -275,9 +276,11 @@ abstract class RDD[T: ClassManifest](
   
   def cedar(k: Int, d: Int,
             x1mean: Double, x1sigma: Double,
+            useTaskDist: Boolean,
             x2mean: Double, x2sigma: Double,
             useCedar: Boolean):PartialResult[Array[Int]] = {
-    val mW = this.mapAndWaitPartitions(x1mean, x1sigma)
+    val taskDist = CedarUtils.GetTaskDist()
+    val mW = this.mapAndWaitPartitions(x1mean, x1sigma, taskDist, useTaskDist)
     val agg = mW.aggregate(k, d, x1mean, x1sigma, x2mean, x2sigma, useCedar)
     val w = agg.waitPartitions(x2mean, x2sigma)
     w.partialAggregate(d)
@@ -393,14 +396,15 @@ abstract class RDD[T: ClassManifest](
    * Return a new RDD by applying a function to each partition of this RDD 
    * and then waiting based on log normal distribution.
    */
-  def mapAndWaitPartitions(logDistMean: Double, logDistSigma: Double) : RDD[Int] = {
+  def mapAndWaitPartitions(logDistMean: Double, logDistSigma: Double, taskDist: Array[Double],
+                           useTaskDist: Boolean) : RDD[Int] = {
     var cedarFunc: Iterator[T] => Iterator[Int] = {partitionIterator =>
       var num = partitionIterator.next()
       var count = new Array[Int](1)
       count(0) = num.asInstanceOf[Int]
       count.iterator
     }
-    new MapAndWaitPartitionsRDD(this, sc.clean(cedarFunc), logDistMean, logDistSigma, false)
+    new MapAndWaitPartitionsRDD(this, sc.clean(cedarFunc), logDistMean, logDistSigma, taskDist, useTaskDist, false)
   }
 
   /**

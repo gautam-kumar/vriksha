@@ -19,18 +19,32 @@ import spark.serializer.SerializerInstance
  */
 object CedarUtils extends Logging {
   /** Serialize an object using Java serialization */
-  def ReadFacebookTaskDistribution(): Array[Array[Int]] = {
+  def ReadFacebookTaskDistribution(): Array[Array[Double]] = {
     val lines = scala.io.Source.fromFile("MapDurationsPruned.txt").getLines
     val numJobs = lines.next().toInt
-    var a = new Array[Array[Int]](numJobs)
+    var a = new Array[Array[Double]](numJobs)
     var lN = 1
     for (i <- 0 until numJobs) {
       var numTasks = lines.next().toInt; lN = lN + 1
-      a(i) = new Array[Int](numTasks)
+      a(i) = new Array[Double](numTasks)
       for (j <- 0 until numTasks) {
-        a(i)(j) = lines.next().toInt; lN = lN + 1 
+        a(i)(j) = lines.next().toDouble; lN = lN + 1 
       }
     }
     a    
+  }
+
+  def MergeArrays(a: Array[Array[Double]]): Array[Double] = {
+    var b = new Array[Double](0)
+    for (x <- a) {
+      b = b ++ x
+    } 
+    b
+  }
+  
+  def GetTaskDist(): Array[Double] = {
+    val a = ReadFacebookTaskDistribution()
+    val b = MergeArrays(a)
+    scala.util.Random.shuffle(b.toSeq).toArray
   }
 }
