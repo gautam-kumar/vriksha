@@ -279,7 +279,8 @@ abstract class RDD[T: ClassManifest](
             useTaskDist: Boolean,
             x2mean: Double, x2sigma: Double,
             useCedar: Boolean):PartialResult[Array[Int]] = {
-    val taskDist = CedarUtils.GetTaskDist()
+    val taskDist = CedarUtils.GetTaskDist().take(this.partitions.size)
+    logInfo("<G> " + this.partitions.size + " with " + taskDist.max)
     val mW = this.mapAndWaitPartitions(x1mean, x1sigma, taskDist, useTaskDist)
     val agg = mW.aggregate(k, d, x1mean, x1sigma, x2mean, x2sigma, useCedar)
     val w = agg.waitPartitions(x2mean, x2sigma)
@@ -396,8 +397,9 @@ abstract class RDD[T: ClassManifest](
    * Return a new RDD by applying a function to each partition of this RDD 
    * and then waiting based on log normal distribution.
    */
-  def mapAndWaitPartitions(logDistMean: Double, logDistSigma: Double, taskDist: Array[Double],
-                           useTaskDist: Boolean) : RDD[Int] = {
+  def mapAndWaitPartitions(logDistMean: Double, logDistSigma: Double,  
+			   taskDist: Array[Double], useTaskDist: Boolean
+                           ) : RDD[Int] = {
     var cedarFunc: Iterator[T] => Iterator[Int] = {partitionIterator =>
       var num = partitionIterator.next()
       var count = new Array[Int](1)

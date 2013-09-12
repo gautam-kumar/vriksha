@@ -24,9 +24,10 @@ class MapAndWaitPartitionsRDD[T: ClassManifest, U: ClassManifest](
   override def compute(split: Partition, context: TaskContext) = {
     val a = f(firstParent[T].iterator(split, context))
     var s = 0.toLong
-    if (useTaskDist)
-      s = (taskDist(scala.util.Random.nextInt(taskDist.size)) * 1000).toLong
-    else
+    if (useTaskDist) {
+      logInfo("<G> Using taskDist")
+      s = (taskDist(split.index) * 1000).toLong
+    } else
       s = (math.exp(rng.sample()) * 1000).toLong
     logInfo("Sleeping for " + s)
     Thread.sleep(s)
