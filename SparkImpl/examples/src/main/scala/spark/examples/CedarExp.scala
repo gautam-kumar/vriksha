@@ -18,7 +18,7 @@ object CedarExp {
     if (u == 0) useCedar = false
     val pageCount = spark.parallelize(1 to 800, 800)
     val a = pageCount.cedar(16, deadline, 4.4, 1.15, true, 2.94, 0.52, useCedar).initialValue.size
-    println("a is : " + a + " with useCedar: " + useCedar)
+    println(deadline + ": " + a + " with useCedar: " + useCedar)
     System.exit(0)
   }
 }
