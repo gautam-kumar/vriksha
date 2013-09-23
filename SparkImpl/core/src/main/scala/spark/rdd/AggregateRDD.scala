@@ -40,7 +40,8 @@ class AggregateRDD[T: ClassManifest](
     initialSigmaEstimate: Double,
     aboveMean: Double,
     aboveSigma: Double,
-    useCedar: Boolean = true) // Deadline in milliseconds
+    useCedar: Boolean = true,
+    empirical: Boolean = false) // Deadline in milliseconds
   extends RDD[T](sc, Nil)
   with Serializable {
 
@@ -60,7 +61,7 @@ class AggregateRDD[T: ClassManifest](
   var mean = initialMeanEstimate
   var sigma = initialSigmaEstimate
   var rPrev = 0.0
-
+  var sumSquares = 0.0
   var beginTime = 0
 
   logInfo("<G> OrderStats: " + orderStats)
@@ -133,7 +134,16 @@ class AggregateRDD[T: ClassManifest](
         sigma = (sigma * (n - 1) + newSigma) / n
     } 
     rPrev = r
+  }
 
+  private def updateMeanAndSigmaEmpirical(n: Int, curTaskCompletionTime: Double) = {
+      val r = natLog(curTaskCompletionTime)
+      sumSquares += r * r
+      mean = (mean * (n - 1) + r) / n
+      val eX2 = (1.0 * sumSquares) / n
+      val sigmaT = math.sqrt(eX2 - mean * mean)
+      logInfo("<G> update: " + sumSquares + ": ex2: " + eX2 + " : mean2: " + mean * mean + " sigmaT : " + sigmaT)
+      if (sigmaT > 0.1) sigma = sigmaT
   }
 
   override def compute(split: Partition, context: TaskContext) = {
@@ -156,34 +166,41 @@ class AggregateRDD[T: ClassManifest](
     	logInfo("Finished task " + i + " for split " + split.index + " at " + System.currentTimeMillis());
         (i, r)
     } 
-    
-    // Add Listeners when each of the tasks complete 
-    for (f <- tasks) {
-    	f onSuccess {
-            case res => {
-		this.synchronized {
-		  a(res._1) = res._2;
-		  numTasksCompleted += 1; 
-		  // Code to update wait time
-//		  updateMeanAndSigma(numTasksCompleted, System.nanoTime);
-		}
-		logInfo("<G> NumCompleted: " + numTasksCompleted);
-	    } 
-        }    
-        f onFailure {
-            case t => println("An error has occured: " + t.getMessage)
-        }
-    }
-
-
     // TODO: Must learn distribution online
     var timeOut = 0.0
     if (useCedar) timeOut = getOptimalWaitTime(deadline / 1000, mean, sigma, aboveMean, aboveSigma) * 1000 // Conversion to ms
     else timeOut = deadline.toDouble * (157.78 / 179.78)
     logInfo("<G> TimeOut Computed as: " + timeOut)
-    while ((((System.nanoTime - beginTime)/1000000 < timeOut) || (numTasksCompleted < 1)) && (numTasksCompleted < currSplit.s1.size)) { 
+    
+    // Add Listeners when each of the tasks complete 
+    for (f <- tasks) {
+    	f onSuccess {
+        case res => {
+		      this.synchronized {
+		        a(res._1) = res._2;
+		        numTasksCompleted += 1; 
+		        // Code to update wait time
+            if (useCedar) {
+              if (empirical) {
+		            updateMeanAndSigmaEmpirical(numTasksCompleted, (System.nanoTime - beginTime) / 1000000000.0);
+              } else {
+                updateMeanAndSigma(numTasksCompleted, (System.nanoTime - beginTime) / 1000000000.0);
+              }
+              timeOut = getOptimalWaitTime(deadline / 1000, mean, sigma, aboveMean, aboveSigma) * 1000
+            }
+          } 
+          logInfo("<G> " + numTasksCompleted + " Sleep time updated to " + timeOut + " with mean: " + mean + " sigma: " + sigma)
+	      } 
+      }    
+      f onFailure {
+            case t => println("An error has occured: " + t.getMessage)
+      }
+    }
+
+
+   while ((((System.nanoTime - beginTime)/1000000 < timeOut) || (numTasksCompleted < 1)) && (numTasksCompleted < currSplit.s1.size)) { 
     	Thread.sleep(1000L)
-    	//logInfo("<G> Sleeping more: " + numTasksCompleted + ", " +
+    //	logInfo("<G> Sleeping more: " + numTasksCompleted + ", " +
     	//currSplit.s1.size + "--" + (numTasksCompleted < currSplit.s1.size))
     }
     logInfo("<G> Out of sleep loop at " + (System.nanoTime - beginTime)/1000000)

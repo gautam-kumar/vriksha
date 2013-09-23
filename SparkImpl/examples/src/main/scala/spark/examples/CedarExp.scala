@@ -14,11 +14,14 @@ object CedarExp {
       System.getenv("SPARK_HOME"), Seq(System.getenv("SPARK_EXAMPLES_JAR")))
     val deadline = args(1).toInt
     val u = args(2).toInt
+    val e = args(3).toInt
     var useCedar = true
     if (u == 0) useCedar = false
+    var empirical = false
+    if (e == 0) empirical = true
     val pageCount = spark.parallelize(1 to 800, 800)
-    val a = pageCount.cedar(16, deadline, 4.4, 1.15, true, 2.94, 0.52, useCedar).initialValue.size
-    println(deadline + ": " + a + " with useCedar: " + useCedar)
+    val a = pageCount.cedar(16, deadline, 4.4, 1.15, true, 2.94, 0.52, useCedar, empirical).initialValue.size
+    println(deadline + ": " + a + " with useCedar: " + useCedar + " empirical: " + empirical)
     System.exit(0)
   }
 }
