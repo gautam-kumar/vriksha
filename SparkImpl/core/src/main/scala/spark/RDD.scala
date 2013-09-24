@@ -267,22 +267,23 @@ abstract class RDD[T: ClassManifest](
   def aggregate(n : Int, deadline: Int, 
                 initialMeanEstimate: Double, initialSigmaEstimate: Double,
                 aboveMean: Double, aboveSigma: Double,
-                useCedar: Boolean = true): RDD[T] = {
+                useCedar: Boolean = true,
+                empirical: Boolean = false): RDD[T] = {
     logInfo("<G> Creating a Aggregate RDD")
     new AggregateRDD(sc, this, n, deadline, 
                      initialMeanEstimate, initialSigmaEstimate, aboveMean, aboveSigma,
-                     useCedar)
+                     useCedar, empirical)
   }
   
   def cedar(k: Int, d: Int,
             x1mean: Double, x1sigma: Double,
             useTaskDist: Boolean,
             x2mean: Double, x2sigma: Double,
-            useCedar: Boolean):PartialResult[Array[Int]] = {
+            useCedar: Boolean, empirical: Boolean):PartialResult[Array[Int]] = {
     val taskDist = CedarUtils.GetTaskDist().take(this.partitions.size)
     logInfo("<G> " + this.partitions.size + " with " + taskDist.max)
     val mW = this.mapAndWaitPartitions(x1mean, x1sigma, taskDist, useTaskDist)
-    val agg = mW.aggregate(k, d, x1mean, x1sigma, x2mean, x2sigma, useCedar)
+    val agg = mW.aggregate(k, d, x1mean, x1sigma, x2mean, x2sigma, useCedar, empirical)
     val w = agg.waitPartitions(x2mean, x2sigma)
     w.partialAggregate(d)
   }
