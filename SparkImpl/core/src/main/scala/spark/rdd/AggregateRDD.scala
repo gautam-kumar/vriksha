@@ -179,7 +179,7 @@ class AggregateRDD[T: ClassManifest](
     // TODO: Must learn distribution online
     var timeOut = 0.0
     if (useCedar) timeOut = getOptimalWaitTime(deadline / 1000, mean, sigma, aboveMean, aboveSigma) * 1000 // Conversion to ms
-    else timeOut = deadline.toDouble * (157.78 / 179.78)
+    else timeOut = deadline.toDouble * (21.35/(21.35 + 22.00)) 
     logInfo("<G> TimeOut Computed as: " + timeOut)
     while ((((System.nanoTime - beginTime)/1000000 < timeOut) || (numTasksCompleted < 1)) && (numTasksCompleted < currSplit.s1.size)) { 
     	Thread.sleep(1000L)
