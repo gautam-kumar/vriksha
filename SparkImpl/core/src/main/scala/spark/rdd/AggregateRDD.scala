@@ -180,14 +180,14 @@ class AggregateRDD[T: ClassManifest](
 		        a(res._1) = res._2;
 		        numTasksCompleted += 1; 
 		        // Code to update wait time
-            if (useCedar) {
+            /*if (useCedar) {
               if (empirical) {
 		            updateMeanAndSigmaEmpirical(numTasksCompleted, (System.nanoTime - beginTime) / 1000000000.0);
               } else {
                 updateMeanAndSigma(numTasksCompleted, (System.nanoTime - beginTime) / 1000000000.0);
               }
               timeOut = getOptimalWaitTime(deadline / 1000, mean, sigma, aboveMean, aboveSigma) * 1000
-            }
+            }*/
           } 
           logInfo("<G> " + numTasksCompleted + " Sleep time updated to " + timeOut + " with mean: " + mean + " sigma: " + sigma)
 	      } 
