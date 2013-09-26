@@ -169,7 +169,7 @@ class AggregateRDD[T: ClassManifest](
     // TODO: Must learn distribution online
     var timeOut = 0.0
     if (useCedar) timeOut = getOptimalWaitTime(deadline / 1000, mean, sigma, aboveMean, aboveSigma) * 1000 // Conversion to ms
-    else timeOut = deadline.toDouble * (21.35 / (21.35 + 22))
+    else timeOut = deadline.toDouble * (157.78 / (157.78 + 22))
     logInfo("<G> TimeOut Computed as: " + timeOut)
     
     // Add Listeners when each of the tasks complete 
